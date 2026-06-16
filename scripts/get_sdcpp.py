@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
 """Télécharge un binaire pré-compilé de stable-diffusion.cpp (sd-cli) dans ./bin.
 
-Choisit l'archive correspondant à la plateforme (Windows CUDA 12 par défaut,
-idéal pour les cartes RTX). `--variant cpu` force une build CPU/AVX2.
+Pour Windows + CUDA, récupère DEUX archives :
+  - la build principale  : sd-master-*-bin-win-cuda12-x64.zip  (contient sd-cli)
+  - le runtime CUDA      : cudart-sd-bin-win-cu12-x64.zip       (DLLs CUDA)
+…et les décompresse côte à côte (indispensable sans CUDA Toolkit installé).
+
+Usage :
+    python scripts/get_sdcpp.py                 # auto (CUDA)
+    python scripts/get_sdcpp.py --variant cpu   # build CPU/AVX2
+    python scripts/get_sdcpp.py --list          # liste les archives dispo
 """
 from __future__ import annotations
 
@@ -18,36 +25,81 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 BIN_DIR = ROOT / "bin"
-API = "https://api.github.com/repos/leejet/stable-diffusion.cpp/releases/latest"
+RELEASES = "https://api.github.com/repos/leejet/stable-diffusion.cpp/releases?per_page=10"
 
 
-def _fetch_json(url: str) -> dict:
+def _fetch_json(url: str):
     req = urllib.request.Request(url, headers={"User-Agent": "atelier"})
     with urllib.request.urlopen(req, timeout=60) as r:
         return json.loads(r.read().decode())
 
 
-def _score(name: str, variant: str) -> int:
+def _platform_tokens() -> list[str]:
+    s = platform.system().lower()
+    return {"windows": ["win"], "linux": ["linux", "ubuntu"],
+            "darwin": ["darwin", "macos"]}.get(s, [])
+
+
+def _is_archive(n: str) -> bool:
+    return n.endswith((".zip", ".tar.gz", ".tgz"))
+
+
+def _score_main(name: str, variant: str) -> int:
+    """Note l'archive PRINCIPALE (qui contient sd-cli). Exclut le cudart."""
     n = name.lower()
-    sysname = platform.system().lower()
-    score = 0
-    if sysname == "windows" and "win" in n:
-        score += 10
-    if sysname == "linux" and ("linux" in n or "ubuntu" in n):
-        score += 10
-    if variant == "cuda" and ("cuda12" in n or "cu12" in n):
-        score += 8
-    elif variant == "cuda" and "cuda" in n:
-        score += 6
-    if variant == "cpu" and "cuda" not in n:
-        score += 4
-    if "avx2" in n and variant == "cpu":
-        score += 5
+    if not _is_archive(n) or "cudart" in n:
+        return -1000
+    toks = _platform_tokens()
+    if toks and not any(t in n for t in toks):
+        return -1000
+    score = 10
+    if variant == "cuda":
+        if "cuda12" in n or "cu12" in n:
+            score += 10
+        elif "cuda" in n:
+            score += 8
+        else:
+            score -= 4              # pas une build CUDA
+        if "rocm" in n or "vulkan" in n:
+            score -= 20
+    else:  # cpu
+        if any(x in n for x in ("cuda", "rocm", "vulkan")):
+            score -= 20
+        if "avx2" in n:
+            score += 6
+        elif "avx512" in n:
+            score += 3
+        elif "avx" in n:
+            score += 4
+        elif "noavx" in n:
+            score += 1
     if any(t in n for t in ("x64", "amd64", "x86_64")):
         score += 1
-    if not n.endswith((".zip", ".tar.gz", ".tgz")):
-        score -= 100
     return score
+
+
+def _find_cudart(assets: list[dict]) -> dict | None:
+    for a in assets:
+        n = a["name"].lower()
+        if "cudart" in n and "win" in n and _is_archive(n):
+            return a
+    return None
+
+
+def _latest_release_with_assets() -> dict:
+    data = _fetch_json(RELEASES)
+    if isinstance(data, dict):  # message d'erreur (rate limit, etc.)
+        sys.exit(f"API GitHub : {data.get('message', data)}")
+    for rel in data:
+        if rel.get("assets"):
+            return rel
+    sys.exit("Aucune release avec archives trouvée.")
+
+
+def _download(url: str) -> bytes:
+    req = urllib.request.Request(url, headers={"User-Agent": "atelier"})
+    with urllib.request.urlopen(req, timeout=600) as r:
+        return r.read()
 
 
 def _extract(blob: bytes, name: str) -> None:
@@ -67,27 +119,34 @@ def main():
     args = ap.parse_args()
 
     print("Recherche de la dernière release stable-diffusion.cpp…")
-    assets = _fetch_json(API).get("assets", [])
-    if not assets:
-        sys.exit("Aucune archive trouvée.")
+    rel = _latest_release_with_assets()
+    assets = rel["assets"]
+    print(f"Release : {rel.get('tag_name')}")
     if args.list:
         for a in assets:
             print(" ", a["name"])
         return
 
-    best = max(assets, key=lambda a: _score(a["name"], args.variant))
-    if _score(best["name"], args.variant) <= 0:
-        print("Aucune archive ne correspond. Disponibles :")
+    best = max(assets, key=lambda a: _score_main(a["name"], args.variant))
+    if _score_main(best["name"], args.variant) <= 0:
+        print("Aucune archive principale ne correspond. Disponibles :")
         for a in assets:
             print(" ", a["name"])
         sys.exit("Téléchargez-en une manuellement dans ./bin.")
 
-    name, url = best["name"], best["browser_download_url"]
-    print(f"Téléchargement : {name}")
-    req = urllib.request.Request(url, headers={"User-Agent": "atelier"})
-    with urllib.request.urlopen(req, timeout=600) as r:
-        blob = r.read()
-    _extract(blob, name)
+    print(f"Téléchargement (binaire) : {best['name']}")
+    _extract(_download(best["browser_download_url"]), best["name"])
+
+    # Runtime CUDA (Windows) : nécessaire à côté du binaire.
+    if args.variant == "cuda" and platform.system().lower() == "windows":
+        cudart = _find_cudart(assets)
+        if cudart:
+            print(f"Téléchargement (runtime CUDA) : {cudart['name']}")
+            _extract(_download(cudart["browser_download_url"]), cudart["name"])
+        else:
+            print("⚠️ Runtime CUDA (cudart) introuvable dans la release ; "
+                  "si sd-cli ne démarre pas, installez le CUDA Toolkit 12.")
+
     print(f"Décompressé dans {BIN_DIR}. Binaire sd-cli prêt.")
 
 

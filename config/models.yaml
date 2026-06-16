@@ -26,8 +26,8 @@ base_models:
         match: "Z-Image-Turbo-{quant}.gguf"
         quantizable: true
       vae:
-        repo: unsloth/Z-Image-Turbo-GGUF
-        match: "*ae*.safetensors"
+        repo: Comfy-Org/z_image_turbo
+        match: "split_files/vae/*.safetensors"
       text_encoder:
         repo: Qwen/Qwen3-4B-GGUF
         match: "Qwen3-4B-{enc_quant}.gguf"
@@ -59,8 +59,8 @@ base_models:
         match: "ideogram4_uncond-{quant}.gguf"
         quantizable: true
       vae:
-        repo: leejet/ideogram-4-GGUF
-        match: "flux2_ae.safetensors"
+        repo: Comfy-Org/Ideogram-4
+        match: "vae/*.safetensors"
       text_encoder:
         # Encodeur vision-langage ; on ne prend que la partie texte (pas le mmproj).
         repo: unsloth/Qwen3-VL-8B-Instruct-1M-GGUF

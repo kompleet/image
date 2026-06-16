@@ -107,8 +107,11 @@ scripts/
 
 ## Dépannage
 
-- **« Binaire sd-cli introuvable »** → `python scripts/get_sdcpp.py --variant cuda`
-  (ou `install.bat`).
+- **« Binaire sd-cli introuvable »** → relancez `install.bat`, ou téléchargez le
+  moteur manuellement. ⚠️ Sur une install portable Windows, `python` global
+  n'existe pas : utilisez le Python embarqué :
+  `python\python.exe scripts\get_sdcpp.py --variant cuda`
+  (récupère la build **win-cuda12** *et* le runtime **cudart** côte à côte).
 - **« Aucun GPU NVIDIA détecté »** → vérifiez les pilotes / `nvidia-smi`.
 - **Modèle « à télécharger »** → onglet Bibliothèque → bouton Télécharger.
 - **Out of memory** → Réglages : baissez la quantification, activez offload/tiling,

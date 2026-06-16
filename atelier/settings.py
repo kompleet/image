@@ -64,17 +64,23 @@ def save_prefs(prefs: dict[str, Any]) -> None:
 
 
 # --- localisation du binaire stable-diffusion.cpp --------------------------
-def sd_cli_name() -> str:
-    return "sd-cli.exe" if platform.system() == "Windows" else "sd-cli"
+def sd_cli_names() -> list[str]:
+    """Noms possibles du binaire selon la version de stable-diffusion.cpp."""
+    if platform.system() == "Windows":
+        return ["sd-cli.exe", "sd.exe"]
+    return ["sd-cli", "sd"]
 
 
 def find_sd_cli() -> Path | None:
-    name = sd_cli_name()
-    for candidate in BIN_DIR.rglob(name):
-        if candidate.is_file():
-            return candidate
-    found = shutil.which(name) or shutil.which("sd")
-    return Path(found) if found else None
+    for name in sd_cli_names():
+        for candidate in BIN_DIR.rglob(name):
+            if candidate.is_file():
+                return candidate
+    for name in sd_cli_names():
+        found = shutil.which(name)
+        if found:
+            return Path(found)
+    return None
 
 
 def model_repo_dir(repo: str) -> Path:

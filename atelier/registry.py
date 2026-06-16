@@ -104,13 +104,19 @@ def resolve_component_path(comp: Component) -> Path | None:
     if not repo_dir.exists():
         return None
     pattern = comp.match
-    # Correspondance exacte d'abord
+    # Correspondance exacte d'abord (gère aussi les motifs avec sous-dossier).
     exact = repo_dir / pattern
     if "*" not in pattern and exact.is_file():
         return exact
-    matches = sorted((p for p in repo_dir.rglob("*")
-                      if p.is_file() and fnmatch.fnmatch(p.name, pattern)),
-                     key=lambda p: len(p.name))
+    # Sinon, on teste le motif sur le nom ET sur le chemin relatif (sous-dossiers).
+    matches = []
+    for p in repo_dir.rglob("*"):
+        if not p.is_file():
+            continue
+        rel = p.relative_to(repo_dir).as_posix()
+        if fnmatch.fnmatch(p.name, pattern) or fnmatch.fnmatch(rel, pattern):
+            matches.append(p)
+    matches.sort(key=lambda p: len(p.relative_to(repo_dir).as_posix()))
     return matches[0] if matches else None
 
 
