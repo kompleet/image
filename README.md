@@ -1,4 +1,4 @@
-# 🎨 Atelier
+# 🟢 Federall Image Generator 3000
 
 Studio d'inférence d'images **local**, moderne et léger, pensé pour les artistes.
 Génère avec **Ideogram 4** et **Z-Image Turbo** au format **GGUF**, avec
@@ -48,7 +48,7 @@ viennent de :
   + encodeur [`Qwen/Qwen3-4B-GGUF`](https://huggingface.co/Qwen/Qwen3-4B-GGUF)
 
 ### Optimisation automatique
-Atelier détecte votre GPU (via `nvidia-smi`) et votre RAM, puis choisit seul :
+L'application détecte votre GPU (via `nvidia-smi`) et votre RAM, puis choisit seul :
 - **la quantification** du modèle de diffusion selon la VRAM
   (`<8 Go → Q4_K_S`, `8–12 → Q4_K_M`, `12–16 → Q5_K_M`, `16–24 → Q6_K`, `≥24 → Q8_0`) ;
 - **la quantification de l'encodeur** selon la RAM (il est déchargé en RAM, donc

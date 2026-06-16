@@ -6,4 +6,5 @@ et la RAM, support LoRA, et upscale SeedVR2 / NVIDIA PiD.
 """
 
 __version__ = "1.0.0"
-APP_NAME = "Atelier"
+APP_NAME = "Federall Image Generator 3000"
+ACCENT = "#add645"

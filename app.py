@@ -84,7 +84,7 @@ def _print_lan_banner(port: int, auth: bool) -> None:
     urls = [f"http://{ip}:{port}" for ip in net.lan_ips()]
     line = "═" * 64
     print("\n" + line)
-    print("  ATELIER est accessible sur le réseau local !")
+    print(f"  {APP_NAME} est accessible sur le réseau local !")
     print("  Partagez cette adresse à vos collègues (Mac/PC, même Wi-Fi),")
     print("  à ouvrir dans Safari ou Chrome :")
     for u in urls or [f"http://<IP-de-ce-PC>:{port}"]:
