@@ -54,9 +54,15 @@ def download_component(comp: Component,
     files = list_repo_files(comp.repo)
     chosen = _pick_file(comp, files)
     if not chosen:
+        # On liste les fichiers pertinents pour diagnostiquer le vrai nommage.
+        relevant = [f for f in files
+                    if f.lower().endswith((".gguf", ".safetensors", ".sft"))]
+        listing = "\n      - " + "\n      - ".join(sorted(relevant)[:40]) \
+            if relevant else " (aucun .gguf/.safetensors trouvé)"
         raise RuntimeError(
             f"Aucun fichier de {comp.repo} ne correspond à "
-            f"« {comp.requested()} » ni au motif « {comp.base_glob()} ».")
+            f"« {comp.requested()} » ni à « {comp.base_glob()} ».\n"
+            f"    Fichiers disponibles dans le dépôt :{listing}")
 
     local_dir = settings.model_repo_dir(comp.repo)
     dest = local_dir / chosen
