@@ -41,13 +41,23 @@ from atelier.ui.settings_tab import build_settings_tab
 from atelier.ui.theme import CSS, theme
 from atelier.ui.upscale_tab import build_upscale_tab
 
+# Force le thème clair quel que soit le réglage clair/sombre du navigateur/OS.
+_FORCE_LIGHT = (
+    "<script>"
+    "if(!new URLSearchParams(window.location.search).has('__theme')){"
+    "const u=new URL(window.location);u.searchParams.set('__theme','light');"
+    "window.location.replace(u);}"
+    "</script>"
+)
+
 
 def build_app() -> gr.Blocks:
     settings.ensure_dirs()
     gpus = hardware.detect_gpus()
     sd_cli = settings.find_sd_cli()
 
-    with gr.Blocks(title=f"{APP_NAME} {__version__}", theme=theme(), css=CSS) as demo:
+    with gr.Blocks(title=f"{APP_NAME} {__version__}", theme=theme(), css=CSS,
+                   head=_FORCE_LIGHT) as demo:
         gr.HTML(
             f"<div id='atelier-header'><h1>🎨 {APP_NAME}</h1>"
             f"<div class='sub'>Génération d'images locale · Ideogram 4 · "
@@ -76,9 +86,26 @@ def main():
     ap.add_argument("--port", type=int, default=7860)
     ap.add_argument("--share", action="store_true")
     args = ap.parse_args()
-    demo = build_app()
-    demo.queue().launch(server_name=args.host, server_port=args.port,
+    demo = build_app().queue()
+
+    # Repli automatique de port si 7860 est déjà pris (instance précédente, etc.).
+    last_err: OSError | None = None
+    for port in range(args.port, args.port + 25):
+        try:
+            demo.launch(server_name=args.host, server_port=port,
                         share=args.share, inbrowser=True, show_api=False)
+            return
+        except OSError as exc:
+            last_err = exc
+            msg = str(exc).lower()
+            if any(s in msg for s in ("empty port", "address already in use",
+                                      "cannot find")):
+                print(f"Port {port} occupé — essai sur {port + 1}…")
+                continue
+            raise
+    raise SystemExit(
+        f"Aucun port libre entre {args.port} et {args.port + 24}.\n"
+        f"Fermez l'instance précédente ou passez --port. ({last_err})")
 
 
 if __name__ == "__main__":
