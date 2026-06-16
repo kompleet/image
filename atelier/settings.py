@@ -86,3 +86,16 @@ def find_sd_cli() -> Path | None:
 def model_repo_dir(repo: str) -> Path:
     """Emplacement local d'un dépôt HF : models/<owner>__<name>/."""
     return MODELS_DIR / repo.replace("/", "__")
+
+
+def configure_hf_env() -> None:
+    """Configure l'environnement Hugging Face pour des téléchargements fiables.
+
+    hf_transfer est désactivé : sous Windows il provoque des verrous de fichier
+    (os error 32). Le téléchargement HTTP standard est plus lent mais robuste.
+    """
+    import os
+    os.environ["HF_HUB_ENABLE_HF_TRANSFER"] = "0"
+    prefs = load_prefs()
+    os.environ.setdefault("HF_ENDPOINT",
+                          prefs.get("hf_endpoint", "https://huggingface.co"))

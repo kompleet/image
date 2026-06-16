@@ -14,13 +14,19 @@ from __future__ import annotations
 
 import argparse
 import io
-import os
 import shutil
 import subprocess
 import sys
 import urllib.request
 import zipfile
 from pathlib import Path
+
+# Console Windows : forcer l'UTF-8 pour éviter les UnicodeEncodeError (cp1252).
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:  # noqa: BLE001
+    pass
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -71,7 +77,7 @@ def main():
     ap.add_argument("upscaler_id", choices=["seedvr2", "nvidia-pid"])
     args = ap.parse_args()
 
-    os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
+    settings.configure_hf_env()
     up = next((u for u in registry.load_upscalers() if u.id == args.upscaler_id), None)
     if up is None:
         sys.exit(f"Upscaler inconnu : {args.upscaler_id}")
@@ -98,8 +104,9 @@ def main():
         try:
             sh([sys.executable, "-m", "pip", "install", "-r", str(req)])
         except subprocess.CalledProcessError:
-            print("⚠️  Certaines dépendances ont échoué (flash-attn/apex parfois "
-                  "pénibles sous Windows). L'inférence peut tout de même marcher.")
+            print("[ATTENTION] Certaines dependances ont echoue (flash-attn/apex "
+                  "parfois penibles sous Windows). L'inference peut tout de meme "
+                  "fonctionner.")
 
     # 4. Poids ----------------------------------------------------------------
     print(f"\nTéléchargement des poids {up.weights_repo}…")
@@ -108,9 +115,10 @@ def main():
         snapshot_download(repo_id=up.weights_repo, local_dir=str(ckpt_dir))
         print(f"Poids dans {ckpt_dir}")
     except Exception as exc:  # noqa: BLE001
-        print(f"⚠️  Échec du téléchargement des poids : {exc}")
+        print(f"[ERREUR] Echec du telechargement des poids : {exc}")
+        raise SystemExit(1)
 
-    print(f"\n« {up.name} » installé. Disponible dans l'onglet Upscale.")
+    print(f"\n[OK] {up.name} installe. Disponible dans l'onglet Upscale.")
 
 
 if __name__ == "__main__":

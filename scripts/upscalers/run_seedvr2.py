@@ -12,6 +12,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 CANDIDATES = [
     "projects/inference_seedvr2_3b.py",
     "projects/inference_seedvr2.py",

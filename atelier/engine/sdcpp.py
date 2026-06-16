@@ -108,7 +108,8 @@ def run(cmd: list[str], log: Callable[[str], None] | None = None,
     if log:
         log("$ " + " ".join(_q(c) for c in cmd))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1, cwd=str(settings.ROOT), env=env)
+                            text=True, bufsize=1, cwd=str(settings.ROOT), env=env,
+                            encoding="utf-8", errors="replace")
     assert proc.stdout is not None
     for line in proc.stdout:
         if log:

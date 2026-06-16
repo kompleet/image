@@ -4,8 +4,9 @@ gradio>=5.9,<6
 
 # Bibliothèque de modèles : téléchargement à la demande depuis Hugging Face
 # NB : <1.0 — huggingface_hub 1.0 retire des symboles encore utilisés en amont.
+# hf_transfer n'est volontairement PAS utilisé : sous Windows il provoque des
+# verrous de fichier (os error 32). Téléchargement HTTP standard = fiable.
 huggingface_hub>=0.26,<1.0
-hf_transfer>=0.1.6
 
 # Utilitaires
 PyYAML>=6.0

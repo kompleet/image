@@ -6,7 +6,6 @@ encodeur...) en choisissant le bon fichier par correspondance souple sur le moti
 from __future__ import annotations
 
 import fnmatch
-import os
 from pathlib import Path
 from typing import Callable, Iterator
 
@@ -42,9 +41,7 @@ def _pick_file(comp: Component, files: list[str]) -> str | None:
 
 def download_component(comp: Component,
                        log: Callable[[str], None] | None = None) -> Path:
-    os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
-    os.environ.setdefault("HF_ENDPOINT", settings.load_prefs().get(
-        "hf_endpoint", "https://huggingface.co"))
+    settings.configure_hf_env()
     try:
         from huggingface_hub import hf_hub_download, list_repo_files
     except ImportError as exc:  # pragma: no cover

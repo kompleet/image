@@ -42,7 +42,8 @@ def install_stream(upscaler_id: str):
     buf: list[str] = [f"$ {' '.join(cmd)}", ""]
     yield "\n".join(buf)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1, cwd=str(settings.ROOT))
+                            text=True, bufsize=1, cwd=str(settings.ROOT),
+                            encoding="utf-8", errors="replace")
     assert proc.stdout is not None
     for line in proc.stdout:
         buf.append(line.rstrip("\n"))
@@ -103,7 +104,8 @@ def upscale(
     if log:
         log("$ " + " ".join(cmd))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                            text=True, bufsize=1, cwd=str(settings.ROOT), env=env)
+                            text=True, bufsize=1, cwd=str(settings.ROOT), env=env,
+                            encoding="utf-8", errors="replace")
     assert proc.stdout is not None
     for line in proc.stdout:
         if log:
