@@ -94,7 +94,7 @@ def build_generate_tab():
                     ie_build = gr.Button("🧱 Construire le prompt JSON → Prompt")
 
                 with gr.Accordion("🖼️ Image de départ (image-to-image)", open=False):
-                    init_image = gr.Image(label="Source", type="pil", height=220)
+                    init_image = gr.Image(label="Source", type="pil", height=300)
                     strength = gr.Slider(0.1, 1.0, value=0.6, step=0.05,
                                          label="Force de transformation")
 
@@ -133,10 +133,10 @@ def build_generate_tab():
 
             # ---------------- Colonne sorties ----------------
             with gr.Column(scale=4):
-                gallery = gr.Gallery(label="Résultats", columns=2, height=520,
+                gallery = gr.Gallery(label="Résultats", columns=2, height=680,
                                      object_fit="contain", show_label=True,
                                      format="png", show_download_button=True)
-                logbox = gr.Textbox(label="Journal", lines=10, max_lines=20,
+                logbox = gr.Textbox(label="Journal", lines=14, max_lines=24,
                                     autoscroll=True, elem_classes="log-box")
 
         # ---------------- Comportements ----------------

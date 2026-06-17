@@ -40,7 +40,7 @@ def build_upscale_tab():
                     btn.click(make_installer(u.id), outputs=[install_log])
         with gr.Row():
             with gr.Column(scale=3):
-                image = gr.Image(label="Image à agrandir", type="pil", height=320)
+                image = gr.Image(label="Image à agrandir", type="pil", height=420)
                 engine = gr.Radio(choices=choices,
                                   value=(choices[0][1] if choices else None),
                                   label="Moteur d'upscale")
@@ -48,9 +48,9 @@ def build_upscale_tab():
                 scale = gr.Radio([2, 4, 8], value=4, label="Facteur")
                 run = gr.Button("🚀 Agrandir", variant="primary", size="lg")
             with gr.Column(scale=4):
-                result = gr.Image(label="Résultat", height=520, format="png",
+                result = gr.Image(label="Résultat", height=680, format="png",
                                   show_download_button=True)
-                logbox = gr.Textbox(label="Journal", lines=10, autoscroll=True,
+                logbox = gr.Textbox(label="Journal", lines=14, autoscroll=True,
                                     elem_classes="log-box")
 
         def _refresh_engines():

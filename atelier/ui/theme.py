@@ -36,7 +36,7 @@ def theme() -> gr.Theme:
 
 
 CSS = f"""
-.gradio-container {{ max-width: 1400px !important; margin: auto; }}
+.gradio-container {{ max-width: 1750px !important; margin: auto; }}
 #atelier-header {{ text-align: left; padding: 4px 0 2px 0; }}
 #atelier-header h1 {{ font-size: 1.7rem; margin: 0; letter-spacing: .5px;
                       color: {ACCENT}; }}
