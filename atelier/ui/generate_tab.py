@@ -112,8 +112,8 @@ def build_generate_tab():
                                     value="Carré 1:1 — 1024×1024",
                                     label="Format (ratio)")
                 with gr.Row():
-                    width = gr.Slider(256, 1536, value=1024, step=64, label="Largeur")
-                    height = gr.Slider(256, 1536, value=1024, step=64, label="Hauteur")
+                    width = gr.Slider(256, 2048, value=1024, step=16, label="Largeur")
+                    height = gr.Slider(256, 2048, value=1024, step=16, label="Hauteur")
                 with gr.Row():
                     steps = gr.Slider(1, 60, value=8, step=1, label="Étapes")
                     cfg = gr.Slider(1.0, 12.0, value=1.0, step=0.1, label="CFG")

@@ -67,12 +67,14 @@ base_models:
         match: "*{enc_quant}.gguf"
         quantizable: true
     defaults:
-      steps: 28
-      cfg_scale: 4.0
+      # Doc officielle : guidance ~7.0, ~20 pas (preset V4_DEFAULT_20),
+      # sampler Euler (flow-matching). CFG asymétrique = pas de prompt négatif.
+      steps: 20
+      cfg_scale: 7.0
       sampler: euler
       width: 1024
       height: 1024
-      supports_negative: true
+      supports_negative: false
     vram_min_gb: 10
 
 # ============================================================================
