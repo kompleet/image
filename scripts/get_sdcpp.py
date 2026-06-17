@@ -35,6 +35,12 @@ RELEASES = "https://api.github.com/repos/leejet/stable-diffusion.cpp/releases?pe
 _UA = {"User-Agent": "atelier"}
 
 
+def _has_sd_cli() -> bool:
+    names = ("sd-cli.exe", "sd.exe") if platform.system() == "Windows" \
+        else ("sd-cli", "sd")
+    return any(any(BIN_DIR.rglob(n)) for n in names) if BIN_DIR.exists() else False
+
+
 def _force_ipv4():
     """Force la résolution IPv4 uniquement.
 
@@ -136,7 +142,22 @@ def _progress(got: int, total: int, last: int) -> int:
     return last
 
 
-def _download(url: str) -> bytes:
+def _download(url: str, retries: int = 3) -> bytes:
+    """Télécharge avec progression et réessais (le CDN peut stagner)."""
+    import time
+    for attempt in range(1, retries + 1):
+        try:
+            return _download_once(url)
+        except Exception as exc:  # noqa: BLE001
+            if attempt >= retries:
+                raise
+            print(f"     (tentative {attempt} échouée : {exc} — nouvel essai…)",
+                  flush=True)
+            time.sleep(2 * attempt)
+    raise RuntimeError("téléchargement impossible")
+
+
+def _download_once(url: str) -> bytes:
     """Télécharge en streaming avec progression. Utilise requests si dispo
     (gère proprement les redirections du CDN GitHub, contrairement à urllib)."""
     buf = bytearray()
@@ -204,15 +225,27 @@ def main():
             print(" ", a["name"])
         sys.exit("Téléchargez-en une manuellement dans ./bin.")
 
-    print(f"Téléchargement (binaire) : {best['name']}")
-    _extract(_download(best["browser_download_url"]), best["name"])
+    # Binaire principal (skip si déjà présent, utile en cas de relance).
+    if _has_sd_cli():
+        print("Binaire sd-cli déjà présent, on saute le téléchargement.")
+    else:
+        print(f"Téléchargement (binaire) : {best['name']}")
+        _extract(_download(best["browser_download_url"]), best["name"])
 
-    # Runtime CUDA (Windows) : nécessaire à côté du binaire.
+    # Runtime CUDA (Windows) : nécessaire à côté du binaire. NON bloquant :
+    # en cas d'échec on continue (téléchargement manuel possible, ou CUDA déjà
+    # installé sur la machine).
     if args.variant == "cuda" and platform.system().lower() == "windows":
         cudart = _find_cudart(assets)
         if cudart:
             print(f"Téléchargement (runtime CUDA) : {cudart['name']}")
-            _extract(_download(cudart["browser_download_url"]), cudart["name"])
+            try:
+                _extract(_download(cudart["browser_download_url"]), cudart["name"])
+            except Exception as exc:  # noqa: BLE001
+                print(f"\n⚠️ Échec du téléchargement du runtime CUDA : {exc}")
+                print("   Le binaire est en place. Si sd-cli ne démarre pas, "
+                      "récupérez ce fichier manuellement et dézippez-le dans bin\\ :")
+                print(f"   {cudart['browser_download_url']}")
         else:
             print("⚠️ Runtime CUDA (cudart) introuvable dans la release ; "
                   "si sd-cli ne démarre pas, installez le CUDA Toolkit 12.")
