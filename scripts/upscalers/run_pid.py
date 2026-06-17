@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Runner NVIDIA PiD : appelle le script d'inférence du dépôt nv-tlabs/PiD.
+"""Runner NVIDIA PiD.
 
-Appelé par atelier/engine/upscalers.py. PiD (Pixel Diffusion Decoder) fait du
-super-resolution / décodage haute résolution. L'API du dépôt évoluant, on
-localise un script d'inférence et on tente un jeu d'arguments courant ; en cas
-de différence, adaptez CANDIDATES / les arguments ci-dessous.
+PiD (Pixel Diffusion Decoder, nv-tlabs/PiD) est avant tout un *décodeur de
+latents* haute résolution, pas un upscaler d'image PNG « générique ». Son point
+d'entrée et ses arguments varient selon le dépôt. Ce runner :
+  1. liste les scripts Python du dépôt (affichés dans le journal),
+  2. tente de détecter un vrai script CLI (avec argparse + __main__),
+  3. l'exécute avec un jeu d'arguments probable.
+
+Si rien ne sort, la liste affichée permet de câbler le bon script/arguments.
 """
 from __future__ import annotations
 
@@ -18,26 +22,40 @@ try:
 except Exception:
     pass
 
-CANDIDATES = [
-    "inference.py",
-    "scripts/inference.py",
-    "demo.py",
-    "scripts/demo.py",
-    "sample.py",
-]
+# Mots du nom de fichier qui DISQUALIFIENT (modules, pas des points d'entrée).
+_SKIP = ("utils", "__init__", "setup", "config", "dataset", "loader",
+         "model", "module", "network", "layer", "blocks", "registry", "__main__")
+# Mots qui suggèrent un point d'entrée d'inférence.
+_GOOD = ("inference", "sample", "demo", "run", "main", "generate",
+         "upscale", "super_res", "sr", "decode", "infer", "test_sr")
 
 
-def find_script(repo: Path) -> Path:
-    for rel in CANDIDATES:
-        if (repo / rel).is_file():
-            return repo / rel
-    for name in ("inference", "demo", "sample", "upscale"):
-        for p in repo.rglob(f"*{name}*.py"):
-            if "test" not in p.name.lower():
-                return p
-    sys.exit(
-        f"Script d'inférence PiD introuvable dans {repo}.\n"
-        "Consultez le README du dépôt et ajustez scripts/upscalers/run_pid.py.")
+def _is_cli(path: Path) -> bool:
+    try:
+        txt = path.read_text(encoding="utf-8", errors="ignore")
+    except OSError:
+        return False
+    return ("__main__" in txt and
+            ("argparse" in txt or "ArgumentParser" in txt or "click" in txt))
+
+
+def _score(path: Path) -> int:
+    name = path.stem.lower()
+    if any(s in name for s in _SKIP):
+        return -1000
+    s = 0
+    if name in _GOOD:
+        s += 6
+    elif any(g in name for g in _GOOD):
+        s += 3
+    if _is_cli(path):
+        s += 5
+    # privilégie les scripts proches de la racine ou dans scripts/projects/tools
+    parts = [p.lower() for p in path.parts]
+    if any(d in parts for d in ("scripts", "projects", "tools", "demo")):
+        s += 2
+    s -= len(path.parts)  # moins profond = mieux
+    return s
 
 
 def main():
@@ -49,22 +67,36 @@ def main():
     args = ap.parse_args()
 
     repo = Path(args.repo_dir).resolve()
-    script = find_script(repo)
-    ckpt = repo / "ckpts"
+    pys = sorted(p for p in repo.rglob("*.py")
+                 if "__pycache__" not in p.parts)
 
-    # Jeu d'arguments « probable » pour un script de super-resolution.
+    print("Scripts Python du dépôt PiD :")
+    for p in pys:
+        tag = " [CLI]" if _is_cli(p) else ""
+        print(f"   - {p.relative_to(repo).as_posix()}{tag}")
+    print()
+
+    cli = [p for p in pys if _is_cli(p) and _score(p) > -1000]
+    cli.sort(key=_score, reverse=True)
+    if not cli:
+        print("[PiD] Aucun script CLI détecté automatiquement.")
+        print("[PiD] Copiez la liste ci-dessus pour câbler le bon point d'entrée.")
+        raise SystemExit(2)
+
+    script = cli[0]
+    ckpt = repo / "ckpts"
     cmd = [sys.executable, str(script),
            "--input", str(Path(args.input).resolve()),
            "--output", str(Path(args.output_dir).resolve()),
            "--scale", str(args.scale)]
     if ckpt.is_dir():
         cmd += ["--ckpt", str(ckpt)]
+    print(f"[PiD] Script détecté : {script.relative_to(repo).as_posix()}")
     print("$", " ".join(cmd), flush=True)
     code = subprocess.call(cmd, cwd=str(repo))
     if code != 0:
-        print("\n[NVIDIA PiD] Le script s'est terminé en erreur.\n"
-              "L'API du dépôt diffère peut-être : ouvrez le README de "
-              f"{repo} et ajustez les arguments dans run_pid.py.", flush=True)
+        print(f"\n[PiD] Échec (code {code}). L'API du dépôt diffère probablement.")
+        print("[PiD] Envoyez la liste des scripts ci-dessus pour ajuster run_pid.py.")
     raise SystemExit(code)
 
 
