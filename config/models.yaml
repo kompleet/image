@@ -85,18 +85,8 @@ upscalers:
     engine: pytorch
     tags: [restauration, qualité-max]
     description: >
-      Restauration/upscale par diffusion (ByteDance). Qualité maximale, plus lent.
+      Restauration/upscale par diffusion (ByteDance). Conçu pour agrandir des
+      images : qualité maximale.
     weights_repo: ByteDance-Seed/SeedVR2-3B
     code_repo: https://github.com/ByteDance-Seed/SeedVR.git
     vram_min_gb: 10
-
-  - id: nvidia-pid
-    name: "NVIDIA PiD"
-    engine: pytorch
-    tags: [rapide, 4k, diffusion-pixel]
-    description: >
-      Pixel Diffusion Decoder de NVIDIA. Upscale 4×/8× très rapide, compatible
-      Z-Image. Pensé pour les cartes RTX récentes.
-    weights_repo: nvidia/PiD
-    code_repo: https://github.com/nv-tlabs/PiD.git
-    vram_min_gb: 12

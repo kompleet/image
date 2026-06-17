@@ -74,7 +74,7 @@ def sh(cmd: list[str]):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("upscaler_id", choices=["seedvr2", "nvidia-pid"])
+    ap.add_argument("upscaler_id", choices=["seedvr2"])
     args = ap.parse_args()
 
     settings.configure_hf_env()

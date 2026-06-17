@@ -3,7 +3,7 @@
 Studio d'inférence d'images **local**, moderne et léger, pensé pour les artistes.
 Génère avec **Ideogram 4** et **Z-Image Turbo** au format **GGUF**, avec
 **bibliothèque de modèles à la demande**, **optimisations automatiques selon
-votre carte RTX et votre RAM**, **LoRA**, et **upscale SeedVR2 / NVIDIA PiD**.
+votre carte RTX et votre RAM**, **LoRA**, et **upscale SeedVR2**.
 
 Aucun ComfyUI, aucune usine à gaz : une interface web claire en quatre onglets.
 
@@ -11,7 +11,7 @@ Aucun ComfyUI, aucune usine à gaz : une interface web claire en quatre onglets.
 |---|---|
 | 🎨 **Génération** | text-to-image & image-to-image, réglages auto par modèle, LoRA |
 | 📚 **Bibliothèque** | catalogue, recommandations selon le matériel, téléchargement à la demande |
-| 🔍 **Upscale** | SeedVR2-3B ou NVIDIA PiD |
+| 🔍 **Upscale** | SeedVR2-3B (agrandissement d'image) |
 | ⚙️ **Réglages** | matériel détecté, quantification, optimisations (auto/manuel) |
 
 ---
@@ -75,7 +75,6 @@ taper** : ouvrez l'onglet **Upscale → « Installer les moteurs d'upscale »** 
 cliquez sur le bouton du moteur voulu (le code est récupéré en ZIP, sans git ;
 PyTorch et les poids sont installés automatiquement).
 - **SeedVR2-3B** — [`ByteDance-Seed/SeedVR2-3B`](https://huggingface.co/ByteDance-Seed/SeedVR2-3B)
-- **NVIDIA PiD** — [`nvidia/PiD`](https://huggingface.co/nvidia/PiD) · code [`nv-tlabs/PiD`](https://github.com/nv-tlabs/PiD)
 
 ---
 
@@ -117,13 +116,13 @@ atelier/
   engine/
     sdcpp.py                 # construction/exécution des commandes sd-cli (+ LoRA)
     generate.py              # pipeline de génération (modèle + matériel + LoRA)
-    upscalers.py             # SeedVR2 / NVIDIA PiD
+    upscalers.py             # SeedVR2
   ui/
     theme.py                 # thème sombre moderne + CSS
     generate_tab.py · library_tab.py · upscale_tab.py · settings_tab.py
 scripts/
   get_sdcpp.py               # télécharge le binaire stable-diffusion.cpp
-  setup_upscalers.py         # installe SeedVR2 / NVIDIA PiD
+  setup_upscalers.py         # installe SeedVR2
   upscalers/run_*.py         # runners d'inférence des upscalers
 ```
 
@@ -141,4 +140,4 @@ scripts/
 - **Out of memory** → Réglages : baissez la quantification, activez offload/tiling,
   ou réduisez la résolution (Z-Image Turbo + ≤ 768 px sur petite VRAM).
 - **Upscaler en erreur** → l'API des dépôts officiels évolue ; ajustez
-  `scripts/upscalers/run_seedvr2.py` ou `run_pid.py` selon leur README.
+  `scripts/upscalers/run_seedvr2.py` selon le README du dépôt SeedVR.

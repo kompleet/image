@@ -3,14 +3,28 @@ LoRA. Le moteur est stable-diffusion.cpp (GGUF).
 """
 from __future__ import annotations
 
+import re
+
 import gradio as gr
-from PIL import Image
 
 from .. import registry, settings
 from ..engine import generate as gen_engine
 
 SAMPLERS = ["euler", "euler_a", "heun", "dpm++2m", "dpm++2mv2", "dpm2",
             "ipndm", "lcm", "ddim_trailing"]
+
+# Formats prédéfinis (multiples de 64, ~1 Mpx) compatibles Ideogram 4 et Z-Image.
+RATIOS: dict[str, tuple[int, int]] = {
+    "Carré 1:1 — 1024×1024": (1024, 1024),
+    "Paysage 3:2 — 1216×832": (1216, 832),
+    "Portrait 2:3 — 832×1216": (832, 1216),
+    "Paysage 4:3 — 1152×896": (1152, 896),
+    "Portrait 3:4 — 896×1152": (896, 1152),
+    "Large 16:9 — 1344×768": (1344, 768),
+    "Vertical 9:16 — 768×1344": (768, 1344),
+    "Cinéma 21:9 — 1536×640": (1536, 640),
+    "Personnalisé (sliders)": (0, 0),
+}
 
 
 def _model_choices() -> list[tuple[str, str]]:
@@ -64,6 +78,9 @@ def build_generate_tab():
                     refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
+                ratio = gr.Dropdown(list(RATIOS.keys()),
+                                    value="Carré 1:1 — 1024×1024",
+                                    label="Format (ratio)")
                 with gr.Row():
                     width = gr.Slider(256, 1536, value=1024, step=64, label="Largeur")
                     height = gr.Slider(256, 1536, value=1024, step=64, label="Hauteur")
@@ -80,7 +97,8 @@ def build_generate_tab():
             # ---------------- Colonne sorties ----------------
             with gr.Column(scale=4):
                 gallery = gr.Gallery(label="Résultats", columns=2, height=520,
-                                     object_fit="contain", show_label=True)
+                                     object_fit="contain", show_label=True,
+                                     format="png", show_download_button=True)
                 logbox = gr.Textbox(label="Journal", lines=10, max_lines=20,
                                     autoscroll=True, elem_classes="log-box")
 
@@ -118,6 +136,14 @@ def build_generate_tab():
 
         refresh_lora.click(refresh_loras, outputs=[lora1, lora2])
 
+        def on_ratio(label):
+            w, h = RATIOS.get(label, (0, 0))
+            if not w:  # « Personnalisé » : on laisse les sliders tels quels
+                return gr.update(), gr.update()
+            return gr.update(value=w), gr.update(value=h)
+
+        ratio.change(on_ratio, inputs=[ratio], outputs=[width, height])
+
         def do_generate(model_id, prompt, negative, init_image, strength,
                         width, height, steps, cfg, sampler, seed, batch,
                         lora1, lora1_w, lora2, lora2_w,
@@ -137,19 +163,33 @@ def build_generate_tab():
             loras = [(lora1, float(lora1_w)), (lora2, float(lora2_w))]
             loras = [(n, w) for n, w in loras if n]
 
-            progress(0.05, desc="Lancement…")
+            # Suit la progression réelle : sd-cli imprime « étape/total ».
+            total = max(1, int(steps))
+            step_re = re.compile(rf"(\d+)\s*/\s*{total}\b")
+
+            def log(line: str):
+                logs.append(line)
+                m = step_re.search(line)
+                if m:
+                    cur = min(int(m.group(1)), total)
+                    progress(0.05 + 0.9 * cur / total,
+                             desc=f"Génération… étape {cur}/{total}")
+
+            progress(0.02, desc="Chargement du modèle…")
             try:
                 outs = gen_engine.generate(
                     model_id=model_id, prompt=prompt or "", negative=negative or "",
                     steps=int(steps), cfg_scale=float(cfg), width=int(width),
                     height=int(height), seed=int(seed), batch_count=int(batch),
                     sampler=sampler, init_image=init_path, strength=float(strength),
-                    loras=loras, log=logs.append)
+                    loras=loras, log=log)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
                 return [], "\n".join(logs)
             progress(1.0, desc="Terminé")
-            return [Image.open(p) for p in outs], "\n".join(logs)
+            # On renvoie les CHEMINS .png (et non des objets image) : le
+            # téléchargement conserve ainsi le nom de fichier et l'extension.
+            return [str(p) for p in outs], "\n".join(logs)
 
         run.click(
             do_generate,

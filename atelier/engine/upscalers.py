@@ -24,7 +24,6 @@ class UpscaleError(RuntimeError):
 
 _RUNNERS = {
     "seedvr2": "run_seedvr2.py",
-    "nvidia-pid": "run_pid.py",
 }
 
 
