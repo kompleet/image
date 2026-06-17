@@ -12,6 +12,8 @@ from ..engine import generate as gen_engine
 
 SAMPLERS = ["euler", "euler_a", "heun", "dpm++2m", "dpm++2mv2", "dpm2",
             "ipndm", "lcm", "ddim_trailing"]
+SCHEDULES = ["discrete", "karras", "exponential", "ays", "gits",
+             "smoothstep", "sgm_uniform"]
 
 # Formats prédéfinis (multiples de 64, ~1 Mpx) compatibles Ideogram 4 et Z-Image.
 RATIOS: dict[str, tuple[int, int]] = {
@@ -105,7 +107,9 @@ def build_generate_tab():
                         lora2 = gr.Dropdown(label="LoRA 2", choices=gen_engine.list_loras(),
                                             value=None, allow_custom_value=False)
                         lora2_w = gr.Slider(0.0, 1.5, value=0.8, step=0.05, label="Poids")
-                    refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
+                    with gr.Row():
+                        refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
+                        clear_lora = gr.Button("✖ Vider les LoRA", size="sm")
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
                 ratio = gr.Dropdown(list(RATIOS.keys()),
@@ -119,6 +123,9 @@ def build_generate_tab():
                     cfg = gr.Slider(1.0, 12.0, value=1.0, step=0.1, label="CFG")
                 with gr.Row():
                     sampler = gr.Dropdown(SAMPLERS, value="euler", label="Sampler")
+                    schedule = gr.Dropdown(SCHEDULES, value="discrete",
+                                           label="Schedule (bruit)")
+                with gr.Row():
                     seed = gr.Number(value=-1, label="Seed (-1 = aléatoire)", precision=0)
                     batch = gr.Slider(1, 8, value=1, step=1, label="Images")
 
@@ -166,6 +173,13 @@ def build_generate_tab():
 
         refresh_lora.click(refresh_loras, outputs=[lora1, lora2])
 
+        def clear_loras():
+            # Désélectionne les LoRA et remet les poids par défaut.
+            return (gr.update(value=None), gr.update(value=0.8),
+                    gr.update(value=None), gr.update(value=0.8))
+
+        clear_lora.click(clear_loras, outputs=[lora1, lora1_w, lora2, lora2_w])
+
         def on_ratio(label):
             w, h = RATIOS.get(label, (0, 0))
             if not w:  # « Personnalisé » : on laisse les sliders tels quels
@@ -187,7 +201,7 @@ def build_generate_tab():
             outputs=[prompt])
 
         def do_generate(model_id, prompt, negative, init_image, strength,
-                        width, height, steps, cfg, sampler, seed, batch,
+                        width, height, steps, cfg, sampler, schedule, seed, batch,
                         lora1, lora1_w, lora2, lora2_w,
                         progress=gr.Progress()):
             if not model_id:
@@ -223,8 +237,8 @@ def build_generate_tab():
                     model_id=model_id, prompt=prompt or "", negative=negative or "",
                     steps=int(steps), cfg_scale=float(cfg), width=int(width),
                     height=int(height), seed=int(seed), batch_count=int(batch),
-                    sampler=sampler, init_image=init_path, strength=float(strength),
-                    loras=loras, log=log)
+                    sampler=sampler, schedule=schedule, init_image=init_path,
+                    strength=float(strength), loras=loras, log=log)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
                 return [], "\n".join(logs)
@@ -236,7 +250,8 @@ def build_generate_tab():
         run.click(
             do_generate,
             inputs=[model, prompt, negative, init_image, strength, width, height,
-                    steps, cfg, sampler, seed, batch, lora1, lora1_w, lora2, lora2_w],
+                    steps, cfg, sampler, schedule, seed, batch,
+                    lora1, lora1_w, lora2, lora2_w],
             outputs=[gallery, logbox],
         )
 

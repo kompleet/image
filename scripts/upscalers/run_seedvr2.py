@@ -7,6 +7,7 @@ on y dépose l'image d'entrée, on récupère le résultat dans --output-dir.
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import subprocess
 import sys
@@ -53,8 +54,16 @@ def main():
            "--video_path", str(in_dir),
            "--output_dir", str(Path(args.output_dir).resolve()),
            "--seed", "-1", "--sp_size", "1"]
+
+    # Le script importe des packages situés À LA RACINE du dépôt
+    # (data, common, projects…). On ajoute donc la racine au PYTHONPATH,
+    # sinon « ModuleNotFoundError: No module named 'data' ».
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str(repo) + os.pathsep + env.get("PYTHONPATH", "")
+
     print("$", " ".join(cmd), flush=True)
-    raise SystemExit(subprocess.call(cmd, cwd=str(repo)))
+    print(f"  (PYTHONPATH += {repo})", flush=True)
+    raise SystemExit(subprocess.call(cmd, cwd=str(repo), env=env))
 
 
 if __name__ == "__main__":

@@ -26,6 +26,7 @@ class GenRequest:
     steps: int = 8
     cfg_scale: float = 1.0
     sampler: str = "euler"
+    schedule: str = "discrete"
     width: int = 1024
     height: int = 1024
     seed: int = -1
@@ -79,6 +80,8 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
         "-W", f"{req.width}", "-H", f"{req.height}",
         "-s", f"{req.seed}", "-b", f"{req.batch_count}",
     ]
+    if req.schedule:
+        cmd += ["--schedule", req.schedule]
     if req.init_image:
         cmd += ["-i", str(req.init_image), "--strength", f"{req.strength}"]
     if req.lora_dir:
