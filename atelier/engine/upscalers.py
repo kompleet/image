@@ -24,6 +24,7 @@ class UpscaleError(RuntimeError):
 
 _RUNNERS = {
     "seedvr2": "run_seedvr2.py",
+    "aurasr": "run_aurasr.py",
 }
 
 

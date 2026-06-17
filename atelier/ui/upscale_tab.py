@@ -17,14 +17,15 @@ def build_upscale_tab():
 
     with gr.Tab("🔍 Upscale"):
         gr.Markdown("### Agrandissement d'image\n"
-                    "**SeedVR2-3B** : restauration/upscale par diffusion, "
-                    "qualité maximale.")
+                    "**AuraSR v2** : rapide et léger (GAN), idéal Windows.  \n"
+                    "**SeedVR2-3B** : restauration par diffusion, qualité maximale "
+                    "(plus lourd).")
 
-        with gr.Accordion("⚙️ Installer le moteur d'upscale (en 1 clic)", open=False):
+        with gr.Accordion("⚙️ Installer un moteur d'upscale (en 1 clic)", open=False):
             gr.Markdown(
-                "SeedVR2 repose sur PyTorch (volumineux). Cliquez pour "
+                "Ces moteurs reposent sur PyTorch (volumineux). Cliquez pour "
                 "installer — **aucune commande à taper**. Le téléchargement "
-                "(code + PyTorch + poids) peut prendre un long moment.")
+                "peut prendre un long moment.")
             install_log = gr.Textbox(label="Journal d'installation", lines=10,
                                      autoscroll=True, elem_classes="log-box")
             with gr.Row():

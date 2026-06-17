@@ -74,7 +74,10 @@ Ces moteurs reposent sur PyTorch (gros téléchargement). **Aucune commande à
 taper** : ouvrez l'onglet **Upscale → « Installer les moteurs d'upscale »** et
 cliquez sur le bouton du moteur voulu (le code est récupéré en ZIP, sans git ;
 PyTorch et les poids sont installés automatiquement).
-- **SeedVR2-3B** — [`ByteDance-Seed/SeedVR2-3B`](https://huggingface.co/ByteDance-Seed/SeedVR2-3B)
+- **AuraSR v2** — [`fal/AuraSR-v2`](https://huggingface.co/fal/AuraSR-v2) : GAN
+  rapide et léger (une passe), sans NCCL/flash-attn — recommandé sous Windows.
+- **SeedVR2-3B** — [`ByteDance-Seed/SeedVR2-3B`](https://huggingface.co/ByteDance-Seed/SeedVR2-3B) :
+  diffusion, qualité maximale, plus lourd.
 
 ---
 

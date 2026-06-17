@@ -63,6 +63,7 @@ class Upscaler:
     weights_repo: str
     code_repo: str
     vram_min_gb: float
+    pip_package: str = ""
 
 
 def _catalog() -> dict[str, Any]:
@@ -110,6 +111,7 @@ def load_upscalers() -> list[Upscaler]:
             tags=u.get("tags", []), description=(u.get("description") or "").strip(),
             weights_repo=u.get("weights_repo", ""), code_repo=u.get("code_repo", ""),
             vram_min_gb=float(u.get("vram_min_gb", 0)),
+            pip_package=u.get("pip_package", ""),
         ))
     return out
 

@@ -92,3 +92,14 @@ upscalers:
     weights_repo: ByteDance-Seed/SeedVR2-3B
     code_repo: https://github.com/ByteDance-Seed/SeedVR.git
     vram_min_gb: 10
+
+  - id: aurasr
+    name: "AuraSR v2"
+    engine: pytorch
+    tags: [rapide, léger, GAN, ×4]
+    description: >
+      Upscaler GAN (GigaGAN) en une seule passe : rapide et léger, sans NCCL ni
+      flash-attn — idéal sous Windows. ×4 natif (×2/×8 dérivés).
+    weights_repo: fal/AuraSR-v2
+    pip_package: aura-sr
+    vram_min_gb: 6

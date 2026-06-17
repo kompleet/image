@@ -74,7 +74,8 @@ def sh(cmd: list[str]):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("upscaler_id", choices=["seedvr2"])
+    ap.add_argument("upscaler_id",
+                    choices=[u.id for u in registry.load_upscalers()])
     args = ap.parse_args()
 
     settings.configure_hf_env()
@@ -85,6 +86,17 @@ def main():
     settings.UPSCALERS_REPO_DIR.mkdir(parents=True, exist_ok=True)
     repo_dir = settings.UPSCALERS_REPO_DIR / up.id
     ckpt_dir = repo_dir / "ckpts"
+
+    # --- Cas paquet pip (ex. AuraSR) : pas de git, poids auto au 1er run -----
+    if up.pip_package:
+        print("Installation de PyTorch (CUDA 12.1)… (volumineux)")
+        sh([sys.executable, "-m", "pip", "install", "torch", "torchvision",
+            "--index-url", "https://download.pytorch.org/whl/cu121"])
+        print(f"Installation de {up.pip_package}…")
+        sh([sys.executable, "-m", "pip", "install", up.pip_package])
+        repo_dir.mkdir(parents=True, exist_ok=True)  # marqueur « installé »
+        print(f"\n[OK] {up.name} installe. Disponible dans l'onglet Upscale.")
+        return
 
     # 1. Code (ZIP, sans git) -------------------------------------------------
     if not repo_dir.is_dir():
