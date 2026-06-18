@@ -27,6 +27,7 @@ class GenRequest:
     cfg_scale: float = 1.0
     sampler: str = "euler"
     schedule: str = ""          # vide = laisser le scheduler par défaut du modèle
+    flow_shift: float = 0.0     # 0 = auto (ne pas passer --flow-shift)
     width: int = 1024
     height: int = 1024
     seed: int = -1
@@ -82,6 +83,8 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
     ]
     if req.schedule:
         cmd += ["--scheduler", req.schedule]
+    if req.flow_shift and req.flow_shift > 0:
+        cmd += ["--flow-shift", f"{req.flow_shift}"]
     if req.init_image:
         cmd += ["-i", str(req.init_image), "--strength", f"{req.strength}"]
     if req.lora_dir:

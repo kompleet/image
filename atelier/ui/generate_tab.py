@@ -184,6 +184,12 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                     schedule = gr.Dropdown(SCHEDULES,
                                            value=d.get("scheduler", "auto"),
                                            label="Scheduler (sigmas)")
+                flow_shift = gr.Slider(
+                    0.0, 12.0, value=float(d.get("flow_shift", 0.0)), step=0.1,
+                    label="Flow shift (0 = auto · ~3 = + de structure)")
+                if is_ideogram:
+                    quality_preset = gr.Button("🎯 Préréglage Qualité "
+                                               "(DPM++ 2M · 28 pas)", size="sm")
                 with gr.Row():
                     seed = gr.Number(value=-1, label="Seed (-1 = aléatoire)",
                                      precision=0)
@@ -263,8 +269,9 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                 outputs=[prompt])
 
         def do_generate(system_prompt, prompt, negative, init_image, strength,
-                        width, height, steps, cfg, sampler, schedule, seed, batch,
-                        lora1, lora1_w, lora2, lora2_w, progress=gr.Progress()):
+                        width, height, steps, cfg, sampler, schedule, flow_shift,
+                        seed, batch, lora1, lora1_w, lora2, lora2_w,
+                        progress=gr.Progress()):
             if not (prompt or "").strip() and init_image is None:
                 raise gr.Error("Saisissez un prompt (ou une image de départ).")
 
@@ -305,7 +312,8 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                     model_id=model_id, prompt=full_prompt, negative=negative or "",
                     steps=int(steps), cfg_scale=float(cfg), width=int(width),
                     height=int(height), seed=base_seed, batch_count=int(batch),
-                    sampler=sampler, schedule=schedule, init_image=init_path,
+                    sampler=sampler, schedule=schedule,
+                    flow_shift=float(flow_shift or 0.0), init_image=init_path,
                     strength=float(strength), loras=loras, log=log)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
@@ -319,10 +327,15 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
         run.click(
             do_generate,
             inputs=[system_prompt, prompt, negative, init_image, strength, width,
-                    height, steps, cfg, sampler, schedule, seed, batch,
+                    height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
                     lora1, lora1_w, lora2, lora2_w],
             outputs=[gallery, logbox, last_paths],
         )
+
+        if is_ideogram:
+            quality_preset.click(
+                lambda: (gr.update(value="dpm++2m"), gr.update(value=28)),
+                outputs=[sampler, steps])
 
         # Suivi de l'image sélectionnée dans la galerie.
         def _on_select(evt: gr.SelectData):
