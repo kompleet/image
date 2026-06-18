@@ -56,12 +56,22 @@ def main():
 
     out = torch.zeros((1, c, H * sc, W * sc), device=device)
     wsum = torch.zeros((1, 1, H * sc, W * sc), device=device)
-    tile, ov = args.tile, args.overlap
+    tile, ov = args.tile, max(8, args.overlap)
     step = max(16, tile - ov)
     ys = list(range(0, max(1, H), step))
     xs = list(range(0, max(1, W), step))
     print(f"[spandrel] {len(ys)*len(xs)} tuiles ({H}x{W} -> {H*sc}x{W*sc})…",
           flush=True)
+
+    def _feather(h, w, fade):
+        # Masque 2D à bords adoucis : évite les coutures entre tuiles.
+        wy = torch.ones(h, device=device)
+        wx = torch.ones(w, device=device)
+        f = max(1, min(fade, h // 2, w // 2))
+        ramp = torch.linspace(0.05, 1.0, f, device=device)
+        wy[:f] = ramp; wy[-f:] = ramp.flip(0)
+        wx[:f] = ramp; wx[-f:] = ramp.flip(0)
+        return (wy[:, None] * wx[None, :])[None, None]
 
     with torch.no_grad():
         for y in ys:
@@ -71,9 +81,10 @@ def main():
                 patch = t[:, :, y1:y2, x1:x2]
                 op = model(patch).clamp(0, 1)
                 oy, ox = y1 * sc, x1 * sc
-                out[:, :, oy:oy + op.shape[2], ox:ox + op.shape[3]] += op
-                wsum[:, :, oy:oy + op.shape[2], ox:ox + op.shape[3]] += 1.0
-    out = out / wsum.clamp(min=1.0)
+                mask = _feather(op.shape[2], op.shape[3], ov * sc)
+                out[:, :, oy:oy + op.shape[2], ox:ox + op.shape[3]] += op * mask
+                wsum[:, :, oy:oy + op.shape[2], ox:ox + op.shape[3]] += mask
+    out = out / wsum.clamp(min=1e-6)
 
     if args.scale == 2 and sc != 2:
         out = torch.nn.functional.interpolate(out, scale_factor=2 / sc,

@@ -17,6 +17,7 @@ from ..engine import generate as gen_engine
 from .canvas import CANVAS_MARKUP, READ_BOXES_JS
 
 TURBO_LORA_REPO = "ostris/ideogram_4_turbotime_lora"
+UNCOND_LORA_REPO = "ostris/ideogram_4_unconditional_lora"
 
 # (libellé affiché, valeur réelle passée à sd-cli). Liste complète des
 # sampling methods réellement supportées par stable-diffusion.cpp.
@@ -148,8 +149,11 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                         refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
                         clear_lora = gr.Button("✖ Vider les LoRA", size="sm")
                     if is_ideogram:
-                        turbo_lora = gr.Button("⚡ Activer le Turbo LoRA "
-                                               "(accélère Ideogram)", size="sm")
+                        with gr.Row():
+                            turbo_lora = gr.Button("⚡ Turbo LoRA (accélère)",
+                                                   size="sm")
+                            uncond_lora = gr.Button("✨ Unconditional LoRA "
+                                                    "(qualité)", size="sm")
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
                 ratio = gr.Dropdown(list(RATIOS.keys()),
@@ -332,12 +336,15 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
         # Turbo LoRA Ideogram : télécharge ostris/ideogram_4_turbotime_lora et
         # l'active (réduit fortement le nombre d'étapes).
         if is_ideogram:
-            def _enable_turbo():
+            def _enable_lora(repo, new_steps):
                 try:
-                    name = downloader.download_lora(TURBO_LORA_REPO)
+                    name = downloader.download_lora(repo)
                 except Exception as exc:  # noqa: BLE001
-                    raise gr.Error(f"Échec du téléchargement du Turbo LoRA : {exc}")
+                    raise gr.Error(f"Échec du téléchargement du LoRA : {exc}")
                 return (gr.update(choices=gen_engine.list_loras(), value=name),
-                        gr.update(value=1.0), gr.update(value=8))
+                        gr.update(value=1.0), gr.update(value=new_steps))
 
-            turbo_lora.click(_enable_turbo, outputs=[lora1, lora1_w, steps])
+            turbo_lora.click(lambda: _enable_lora(TURBO_LORA_REPO, 8),
+                             outputs=[lora1, lora1_w, steps])
+            uncond_lora.click(lambda: _enable_lora(UNCOND_LORA_REPO, 20),
+                              outputs=[lora1, lora1_w, steps])
