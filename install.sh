@@ -22,8 +22,9 @@ fi
 source "$VENV/bin/activate"
 
 echo "[2/4] Installation des dependances..."
-pip install --upgrade pip
-pip install -r requirements.txt
+PIP_NET="--retries 8 --timeout 120"
+pip install --upgrade pip $PIP_NET
+pip install -r requirements.txt $PIP_NET || pip install -r requirements.txt $PIP_NET
 
 echo "[3/4] Telechargement du moteur stable-diffusion.cpp (CUDA)..."
 python scripts/get_sdcpp.py --variant cuda

@@ -7,13 +7,16 @@ prompt JSON structuré.
 """
 from __future__ import annotations
 
+import random
 import re
 
 import gradio as gr
 
-from .. import ideogram_prompt, registry, settings
+from .. import downloader, ideogram_prompt, registry, settings
 from ..engine import generate as gen_engine
 from .canvas import CANVAS_MARKUP, READ_BOXES_JS
+
+TURBO_LORA_REPO = "ostris/ideogram_4_turbotime_lora"
 
 SAMPLERS = ["euler", "euler_a", "heun", "dpm++2m", "dpm++2mv2", "dpm2",
             "ipndm", "lcm", "ddim_trailing"]
@@ -38,7 +41,8 @@ def _defaults(model_id: str) -> dict:
     return m.defaults if m else {}
 
 
-def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
+def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
+                         tabs=None, pending_upscale=None, upscale_tab_id="upscale"):
     d = _defaults(model_id)
 
     with gr.Tab(title):
@@ -78,6 +82,12 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
         with gr.Row():
             # ----- Entrées -----
             with gr.Column(scale=3):
+                with gr.Accordion("🎭 Prompt système / style (préfixe, optionnel)",
+                                  open=False):
+                    system_prompt = gr.Textbox(
+                        label="Appliqué en tête de chaque génération", lines=2,
+                        placeholder="ex. : style aquarelle, palette pastel, "
+                                    "éclairage doux")
                 prompt = gr.Textbox(label="Prompt", lines=3,
                                     placeholder="Décrivez l'image…")
                 negative = gr.Textbox(label="Prompt négatif", lines=1,
@@ -102,6 +112,9 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
                     with gr.Row():
                         refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
                         clear_lora = gr.Button("✖ Vider les LoRA", size="sm")
+                    if is_ideogram:
+                        turbo_lora = gr.Button("⚡ Activer le Turbo LoRA "
+                                               "(accélère Ideogram)", size="sm")
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
                 ratio = gr.Dropdown(list(RATIOS.keys()),
@@ -131,11 +144,18 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
 
             # ----- Sorties -----
             with gr.Column(scale=4):
-                gallery = gr.Gallery(label="Résultats", columns=2, height=680,
-                                     object_fit="contain", show_label=True,
-                                     format="png", show_download_button=True)
-                logbox = gr.Textbox(label="Journal", lines=14, max_lines=24,
+                gallery = gr.Gallery(label="Résultats (légende = seed)", columns=2,
+                                     height=680, object_fit="contain",
+                                     show_label=True, format="png",
+                                     show_download_button=True)
+                with gr.Row():
+                    send_upscale = gr.Button("📤 Envoyer l'image sélectionnée "
+                                             "vers l'Upscale")
+                logbox = gr.Textbox(label="Journal", lines=12, max_lines=24,
                                     autoscroll=True, elem_classes="log-box")
+
+        last_paths = gr.State([])
+        sel_index = gr.State(0)
 
         # ----- Comportements -----
         def refresh_loras():
@@ -175,11 +195,21 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
                 js=READ_BOXES_JS,
             )
 
-        def do_generate(prompt, negative, init_image, strength, width, height,
-                        steps, cfg, sampler, schedule, seed, batch,
+        def do_generate(system_prompt, prompt, negative, init_image, strength,
+                        width, height, steps, cfg, sampler, schedule, seed, batch,
                         lora1, lora1_w, lora2, lora2_w, progress=gr.Progress()):
             if not (prompt or "").strip() and init_image is None:
                 raise gr.Error("Saisissez un prompt (ou une image de départ).")
+
+            # Prompt système appliqué en préfixe (style réutilisable).
+            full_prompt = prompt or ""
+            if (system_prompt or "").strip():
+                full_prompt = f"{system_prompt.strip()}, {full_prompt}".strip(", ")
+
+            # Seed concrète : on la fixe nous-mêmes pour pouvoir l'afficher.
+            base_seed = int(seed)
+            if base_seed < 0:
+                base_seed = random.randint(0, 2**31 - 1)
 
             logs: list[str] = []
             init_path = None
@@ -205,21 +235,56 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False):
             progress(0.02, desc="Chargement du modèle…")
             try:
                 outs = gen_engine.generate(
-                    model_id=model_id, prompt=prompt or "", negative=negative or "",
+                    model_id=model_id, prompt=full_prompt, negative=negative or "",
                     steps=int(steps), cfg_scale=float(cfg), width=int(width),
-                    height=int(height), seed=int(seed), batch_count=int(batch),
+                    height=int(height), seed=base_seed, batch_count=int(batch),
                     sampler=sampler, schedule=schedule, init_image=init_path,
                     strength=float(strength), loras=loras, log=log)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
-                return [], "\n".join(logs)
+                return [], "\n".join(logs), []
             progress(1.0, desc="Terminé")
-            return [str(p) for p in outs], "\n".join(logs)
+            paths = [str(p) for p in outs]
+            # sd-cli incrémente la seed par image (base, base+1, …) -> légendes.
+            items = [(p, f"seed {base_seed + i}") for i, p in enumerate(paths)]
+            return items, "\n".join(logs), paths
 
         run.click(
             do_generate,
-            inputs=[prompt, negative, init_image, strength, width, height,
-                    steps, cfg, sampler, schedule, seed, batch,
+            inputs=[system_prompt, prompt, negative, init_image, strength, width,
+                    height, steps, cfg, sampler, schedule, seed, batch,
                     lora1, lora1_w, lora2, lora2_w],
-            outputs=[gallery, logbox],
+            outputs=[gallery, logbox, last_paths],
         )
+
+        # Suivi de l'image sélectionnée dans la galerie.
+        def _on_select(evt: gr.SelectData):
+            return evt.index
+
+        gallery.select(_on_select, outputs=[sel_index])
+
+        # Envoi vers l'onglet Upscale (si câblé par app.py).
+        if pending_upscale is not None and tabs is not None:
+            def _send(paths, idx):
+                if not paths:
+                    raise gr.Error("Générez d'abord une image.")
+                i = idx if isinstance(idx, int) and 0 <= idx < len(paths) else 0
+                return paths[i], gr.Tabs(selected=upscale_tab_id)
+
+            send_upscale.click(_send, inputs=[last_paths, sel_index],
+                               outputs=[pending_upscale, tabs])
+        else:
+            send_upscale.visible = False
+
+        # Turbo LoRA Ideogram : télécharge ostris/ideogram_4_turbotime_lora et
+        # l'active (réduit fortement le nombre d'étapes).
+        if is_ideogram:
+            def _enable_turbo():
+                try:
+                    name = downloader.download_lora(TURBO_LORA_REPO)
+                except Exception as exc:  # noqa: BLE001
+                    raise gr.Error(f"Échec du téléchargement du Turbo LoRA : {exc}")
+                return (gr.update(choices=gen_engine.list_loras(), value=name),
+                        gr.update(value=1.0), gr.update(value=8))
+
+            turbo_lora.click(_enable_turbo, outputs=[lora1, lora1_w, steps])

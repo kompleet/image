@@ -74,12 +74,27 @@ def build_app() -> gr.Blocks:
             gr.Markdown("> ⚠️ **Aucun GPU NVIDIA détecté** (mode CPU très lent). "
                         "Vérifiez vos pilotes / `nvidia-smi`.")
 
-        with gr.Tabs():
-            build_generative_tab("zimage-turbo", "🌀 Z-Image Turbo")
-            build_generative_tab("ideogram-4", "🖋️ Ideogram 4", is_ideogram=True)
+        # État partagé : image en attente d'envoi vers l'onglet Upscale.
+        pending_upscale = gr.State(None)
+
+        with gr.Tabs() as tabs:
+            build_generative_tab("zimage-turbo", "🌀 Z-Image Turbo",
+                                 tabs=tabs, pending_upscale=pending_upscale)
+            build_generative_tab("ideogram-4", "🖋️ Ideogram 4", is_ideogram=True,
+                                 tabs=tabs, pending_upscale=pending_upscale)
             build_library_tab()
-            build_upscale_tab()
+            upscale_input = build_upscale_tab(tab_id="upscale")
             build_settings_tab()
+
+        # Quand on arrive sur un onglet : si une image est en attente, la charger
+        # dans l'entrée de l'Upscale puis vider l'état.
+        def _consume_pending(p):
+            if p:
+                return gr.update(value=p), None
+            return gr.update(), p
+
+        tabs.select(_consume_pending, inputs=[pending_upscale],
+                    outputs=[upscale_input, pending_upscale])
 
     return demo
 

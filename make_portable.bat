@@ -10,7 +10,7 @@ REM ===========================================================================
 setlocal
 cd /d "%~dp0"
 
-set "NAME=FederallImageGenerator3000-portable"
+set "NAME=GEN-Ai-Image-Workshop-portable"
 set "STAGE=%TEMP%\fedimg_dist"
 set "ZIP=%~dp0%NAME%.zip"
 

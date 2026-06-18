@@ -7,7 +7,9 @@ from .. import registry
 from ..engine import upscalers
 
 
-def build_upscale_tab():
+def build_upscale_tab(tab_id="upscale"):
+    """Construit l'onglet Upscale. Renvoie le composant Image d'entrée (pour que
+    les onglets de génération puissent y envoyer une image)."""
     ups = registry.load_upscalers()
     choices = []
     for u in ups:
@@ -15,7 +17,7 @@ def build_upscale_tab():
         mark = "●" if installed else "○ (à installer)"
         choices.append((f"{u.name} {mark}", u.id))
 
-    with gr.Tab("🔍 Upscale"):
+    with gr.Tab("🔍 Upscale", id=tab_id):
         gr.Markdown("### Agrandissement d'image\n"
                     "**AuraSR v2** : rapide et léger (GAN), idéal Windows.  \n"
                     "**SeedVR2-3B** : restauration par diffusion, qualité maximale "
@@ -81,3 +83,5 @@ def build_upscale_tab():
 
         run.click(do_upscale, inputs=[image, engine, scale],
                   outputs=[result, logbox])
+
+    return image

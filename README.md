@@ -1,4 +1,4 @@
-# 🟢 Federall Image Generator 3000
+# 🟢 GEN.Ai Image Workshop
 
 Studio d'inférence d'images **local**, moderne et léger, pensé pour les artistes.
 Génère avec **Ideogram 4** et **Z-Image Turbo** au format **GGUF**, avec
@@ -112,7 +112,7 @@ Pour partager le GUI sans que vos amis aient à installer quoi que ce soit :
 
 1. Sur une machine où **tout fonctionne déjà** (Python + moteur `bin\` en place),
    lancez **`make_portable.bat`**.
-2. Cela crée `FederallImageGenerator3000-portable.zip` contenant le code, le
+2. Cela crée `GEN-Ai-Image-Workshop-portable.zip` contenant le code, le
    **Python portable** et le **moteur** — mais pas les modèles.
 3. Vos amis **décompressent** et lancent **`run.bat`**. Aucun téléchargement
    GitHub : ils récupèrent seulement les **modèles** depuis l'onglet

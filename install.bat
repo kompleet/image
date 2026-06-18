@@ -32,8 +32,13 @@ if not exist "%PY%" (
 )
 
 echo [2/4] Installation des dependances (Gradio, huggingface_hub)...
-"%PY%" -m pip install --upgrade pip --no-warn-script-location
-"%PY%" -m pip install -r requirements.txt --no-warn-script-location || goto :error
+REM Reseau plus robuste : nombreux reessais + timeout long contre les coupures.
+set "PIP_NET=--retries 8 --timeout 120 --no-warn-script-location"
+"%PY%" -m pip install --upgrade pip %PIP_NET%
+"%PY%" -m pip install -r requirements.txt %PIP_NET% || (
+    echo Nouvel essai de l'installation des dependances...
+    "%PY%" -m pip install -r requirements.txt %PIP_NET% || goto :error
+)
 
 echo [3/4] Telechargement du moteur stable-diffusion.cpp (CUDA)...
 "%PY%" scripts\get_sdcpp.py --variant cuda || goto :error

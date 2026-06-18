@@ -6,11 +6,37 @@ encodeur...) en choisissant le bon fichier par correspondance souple sur le moti
 from __future__ import annotations
 
 import fnmatch
+import shutil
 from pathlib import Path
 from typing import Callable, Iterator
 
 from . import quant, settings
 from .registry import BaseModel, Component
+
+
+def download_lora(repo: str, log: Callable[[str], None] | None = None) -> str:
+    """Télécharge le premier .safetensors d'un dépôt LoRA dans loras/.
+
+    Renvoie le nom (sans extension) à utiliser dans la syntaxe <lora:nom:poids>.
+    """
+    settings.configure_hf_env()
+    settings.LORA_DIR.mkdir(parents=True, exist_ok=True)
+    from huggingface_hub import hf_hub_download, list_repo_files
+
+    files = list_repo_files(repo)
+    cands = [f for f in files if f.lower().endswith(".safetensors")]
+    if not cands:
+        raise RuntimeError(f"Aucun .safetensors dans {repo}")
+    chosen = sorted(cands, key=len)[0]
+    dest = settings.LORA_DIR / Path(chosen).name
+    if not dest.is_file():
+        if log:
+            log(f"Téléchargement du LoRA {repo}/{chosen}…")
+        got = Path(hf_hub_download(repo_id=repo, filename=chosen,
+                                   local_dir=str(settings.LORA_DIR)))
+        if got.resolve() != dest.resolve() and got.is_file():
+            shutil.copy(got, dest)
+    return dest.stem
 
 
 def _fn(f: str, pattern: str) -> bool:
