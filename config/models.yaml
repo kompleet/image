@@ -99,7 +99,31 @@ upscalers:
     tags: [rapide, léger, GAN, ×4]
     description: >
       Upscaler GAN (GigaGAN) en une seule passe : rapide et léger, sans NCCL ni
-      flash-attn — idéal sous Windows. ×4 natif (×2/×8 dérivés).
+      flash-attn — idéal sous Windows. ×4 natif (×2/×8 dérivés). Plutôt photo.
     weights_repo: fal/AuraSR-v2
     pip_package: aura-sr
     vram_min_gb: 6
+
+  - id: drct-l
+    name: "4x DRCT-L"
+    engine: spandrel
+    tags: [classique, transformer, ×4, net]
+    description: >
+      DRCT-L ×4 (transformer dense). Upscaler « classique » net et polyvalent,
+      chargé via spandrel. PyTorch, pas de flash-attn.
+    pip_package: spandrel
+    model_url: "https://drive.google.com/uc?id=1bVxvA6QFbne2se0CQJ-jyHFy94UOi3h5"
+    model_file: "4x-DRCT-L_X4.pth"
+    vram_min_gb: 8
+
+  - id: nomos2-drct-l
+    name: "4x Nomos2 HQ DRCT-L"
+    engine: spandrel
+    tags: [classique, transformer, ×4, photo]
+    description: >
+      DRCT-L finetuné sur Nomos2 (photos haute qualité), par Phhofm. Chargé via
+      spandrel. PyTorch, pas de flash-attn.
+    pip_package: spandrel
+    model_url: "https://github.com/Phhofm/models/releases/download/4xNomos2_hq_drct-l/4xNomos2_hq_drct-l.safetensors"
+    model_file: "4xNomos2_hq_drct-l.safetensors"
+    vram_min_gb: 8

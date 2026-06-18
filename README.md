@@ -74,10 +74,11 @@ Ces moteurs reposent sur PyTorch (gros téléchargement). **Aucune commande à
 taper** : ouvrez l'onglet **Upscale → « Installer les moteurs d'upscale »** et
 cliquez sur le bouton du moteur voulu (le code est récupéré en ZIP, sans git ;
 PyTorch et les poids sont installés automatiquement).
-- **AuraSR v2** — [`fal/AuraSR-v2`](https://huggingface.co/fal/AuraSR-v2) : GAN
-  rapide et léger (une passe), sans NCCL/flash-attn — recommandé sous Windows.
-- **SeedVR2-3B** — [`ByteDance-Seed/SeedVR2-3B`](https://huggingface.co/ByteDance-Seed/SeedVR2-3B) :
-  diffusion, qualité maximale, plus lourd.
+- **AuraSR v2** — GAN rapide et léger (une passe), plutôt photo.
+- **4x DRCT-L** — transformer dense ×4, net et polyvalent (via spandrel).
+- **4x Nomos2 HQ DRCT-L** — DRCT finetuné photos HQ (Phhofm, via spandrel).
+- **SeedVR2-3B** — restauration par diffusion, qualité maximale, plus lourd
+  (sous Windows, utilise un shim PyTorch pour remplacer flash-attn).
 
 ---
 

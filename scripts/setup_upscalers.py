@@ -121,6 +121,50 @@ def pin_numpy():
     sh([sys.executable, "-m", "pip", "install", "numpy>=1.24,<2"])
 
 
+_GH_MIRRORS = ["https://ghfast.top/", "https://ghproxy.net/", "https://gh.llkk.cc/"]
+
+
+def _download_model_file(url: str, dest: Path):
+    """Télécharge un fichier de modèle. Google Drive -> gdown ; sinon requests
+    en streaming avec reprise et miroirs GitHub."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.is_file() and dest.stat().st_size > 0:
+        print(f"Modèle déjà présent : {dest}")
+        return
+
+    if "drive.google.com" in url:
+        sh([sys.executable, "-m", "pip", "install", "gdown"])
+        import gdown
+        gdown.download(url, str(dest), quiet=False, fuzzy=True)
+        if not dest.is_file():
+            raise RuntimeError("gdown n'a pas pu récupérer le fichier Google Drive.")
+        return
+
+    import requests
+    candidates = [url] + [m + url for m in _GH_MIRRORS]
+    last = None
+    for cand in candidates:
+        try:
+            print(f"Téléchargement : {cand.split('/')[2]}…", flush=True)
+            with requests.get(cand, stream=True, timeout=(10, 60),
+                              headers={"User-Agent": "atelier"}) as r:
+                r.raise_for_status()
+                total = int(r.headers.get("Content-Length", 0) or 0)
+                got = 0
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(262144):
+                        f.write(chunk)
+                        got += len(chunk)
+                        if total and got % (total // 10 + 1) < 262144:
+                            print(f"   {got/1e6:.0f}/{total/1e6:.0f} Mo", flush=True)
+            if dest.stat().st_size > 0:
+                return
+        except Exception as exc:  # noqa: BLE001
+            last = exc
+            print(f"   (échec : {exc})", flush=True)
+    raise RuntimeError(f"Téléchargement du modèle impossible : {last}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("upscaler_id",
@@ -135,6 +179,16 @@ def main():
     settings.UPSCALERS_REPO_DIR.mkdir(parents=True, exist_ok=True)
     repo_dir = settings.UPSCALERS_REPO_DIR / up.id
     ckpt_dir = repo_dir / "ckpts"
+
+    # --- Modèle « fichier + lib » (spandrel : DRCT, DAT, SwinIR…) -----------
+    if up.model_url:
+        ensure_torch_cuda()
+        print(f"Installation de {up.pip_package or 'spandrel'}…")
+        sh([sys.executable, "-m", "pip", "install", up.pip_package or "spandrel"])
+        _download_model_file(up.model_url, repo_dir / up.model_file)
+        pin_numpy()
+        print(f"\n[OK] {up.name} installe. Disponible dans l'onglet Upscale.")
+        return
 
     # --- Cas paquet pip (ex. AuraSR) : pas de git, poids auto au 1er run -----
     if up.pip_package:
