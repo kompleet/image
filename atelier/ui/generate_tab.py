@@ -73,6 +73,14 @@ def _defaults(model_id: str) -> dict:
     return m.defaults if m else {}
 
 
+def _ratio_label(w: int, h: int) -> str:
+    """Libellé de format correspondant à une résolution, sinon « Personnalisé »."""
+    for label, (rw, rh) in RATIOS.items():
+        if rw == w and rh == h:
+            return label
+    return "Personnalisé (sliders)"
+
+
 def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                          tabs=None, pending_upscale=None, upscale_tab_id="upscale"):
     d = _defaults(model_id)
@@ -157,7 +165,8 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
                 ratio = gr.Dropdown(list(RATIOS.keys()),
-                                    value="Carré 1:1 — 1024×1024",
+                                    value=_ratio_label(d.get("width", 1024),
+                                                       d.get("height", 1024)),
                                     label="Format (ratio)")
                 with gr.Row():
                     width = gr.Slider(256, 2048, value=d.get("width", 1024), step=16,
@@ -172,7 +181,8 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                 with gr.Row():
                     sampler = gr.Dropdown(SAMPLERS, value=d.get("sampler", "euler"),
                                           label="Sampler")
-                    schedule = gr.Dropdown(SCHEDULES, value="auto",
+                    schedule = gr.Dropdown(SCHEDULES,
+                                           value=d.get("scheduler", "auto"),
                                            label="Scheduler (sigmas)")
                 with gr.Row():
                     seed = gr.Number(value=-1, label="Seed (-1 = aléatoire)",
