@@ -106,3 +106,55 @@ def generate(
     cmd = sdcpp.build_gen_cmd(sd_cli, req, out)
     sdcpp.run(cmd, log=log, gpu_index=gpu_index)
     return sdcpp.collect_outputs(out, batch_count)
+
+
+def creative_upscale(
+    model_id: str,
+    image,
+    scale: int,
+    prompt: str,
+    creativity: float,
+    log: Callable[[str], None] | None = None,
+) -> Path:
+    """Upscale « créatif » (façon Magnific) : pré-agrandissement Lanczos puis
+    passe img2img à faible bruit qui ré-invente le détail via un modèle de
+    diffusion (Z-Image / Flux…). Réutilise tout le pipeline de génération.
+
+    `creativity` = strength img2img (0.15–0.5 conseillé : plus haut = plus de
+    détail inventé mais plus de dérive).
+    """
+    from PIL import Image
+
+    settings.ensure_dirs()
+    if isinstance(image, (str, Path)):
+        im = Image.open(image).convert("RGB")
+    else:
+        im = image.convert("RGB")
+
+    # Dimensions cibles, arrondies au multiple de 16 (exigence sd.cpp).
+    tw = max(256, int(round(im.width * scale / 16)) * 16)
+    th = max(256, int(round(im.height * scale / 16)) * 16)
+    if log:
+        log(f"Pré-agrandissement {im.width}x{im.height} -> {tw}x{th} (Lanczos)…")
+    base = im.resize((tw, th), Image.LANCZOS)
+    base_path = settings.TMP_DIR / "creative_base.png"
+    base.save(base_path)
+
+    prefs = settings.load_prefs()
+    m = registry.get_base_model(model_id, prefs)
+    if m is None:
+        raise sdcpp.EngineError(f"Modèle de raffinage inconnu : {model_id}")
+    d = m.defaults
+    if log:
+        log(f"Raffinage img2img via « {m.name} » (créativité={creativity})…")
+    outs = generate(
+        model_id=model_id,
+        prompt=prompt or "highly detailed, sharp focus, intricate details, high quality",
+        negative="", steps=int(d.get("steps", 8)), cfg_scale=float(d.get("cfg_scale", 1.0)),
+        width=tw, height=th, seed=-1, batch_count=1,
+        sampler=d.get("sampler", "euler"), schedule=d.get("scheduler", "auto"),
+        init_image=base_path, strength=float(creativity), log=log,
+    )
+    if not outs:
+        raise sdcpp.EngineError("Le raffinage n'a produit aucune image.")
+    return outs[0]

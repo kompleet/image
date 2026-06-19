@@ -36,6 +36,7 @@ _patch_gradio_client()
 
 from atelier import APP_NAME, __version__, hardware, net, settings
 from atelier.ui.canvas import CANVAS_JS
+from atelier.ui.creative_tab import build_creative_tab
 from atelier.ui.generate_tab import build_generative_tab
 from atelier.ui.library_tab import build_library_tab
 from atelier.ui.settings_tab import build_settings_tab
@@ -86,6 +87,7 @@ def build_app() -> gr.Blocks:
                                  tabs=tabs, pending_upscale=pending_upscale)
             build_library_tab()
             upscale_input = build_upscale_tab(tab_id="upscale")
+            build_creative_tab()
             build_settings_tab()
 
         # Quand on arrive sur un onglet : si une image est en attente, la charger
