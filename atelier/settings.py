@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Dossiers (créés au besoin). Tout est local au projet -> portable.
 MODELS_DIR = ROOT / "models"
+CUSTOM_DIR = MODELS_DIR / "custom"   # modèles téléchargés manuellement ailleurs
 LORA_DIR = ROOT / "loras"
 BIN_DIR = ROOT / "bin"
 OUTPUT_DIR = ROOT / "outputs"
@@ -40,7 +41,8 @@ DEFAULT_PREFS: dict[str, Any] = {
 
 
 def ensure_dirs() -> None:
-    for d in (MODELS_DIR, LORA_DIR, BIN_DIR, OUTPUT_DIR, TMP_DIR, USERDATA_DIR):
+    for d in (MODELS_DIR, CUSTOM_DIR, LORA_DIR, BIN_DIR, OUTPUT_DIR, TMP_DIR,
+              USERDATA_DIR):
         d.mkdir(parents=True, exist_ok=True)
 
 

@@ -12,6 +12,24 @@ from . import sdcpp
 from .sdcpp import GenRequest
 
 
+def list_custom_models() -> list[str]:
+    """Noms des fichiers de modèle déposés dans models/custom/ (téléchargés
+    manuellement ailleurs)."""
+    settings.ensure_dirs()
+    out = []
+    for p in sorted(settings.CUSTOM_DIR.glob("*")):
+        if p.suffix.lower() in (".gguf", ".safetensors", ".sft", ".pth", ".ckpt"):
+            out.append(p.name)
+    return out
+
+
+def custom_path(name: str | None) -> Path | None:
+    if not name:
+        return None
+    p = settings.CUSTOM_DIR / name
+    return p if p.is_file() else None
+
+
 def list_loras() -> list[str]:
     """Noms des LoRA disponibles dans loras/ (sans extension)."""
     settings.ensure_dirs()
@@ -63,6 +81,9 @@ def generate(
     init_image: Path | None = None,
     strength: float = 0.6,
     loras: list[tuple[str, float]] | None = None,
+    diffusion_override: Path | None = None,
+    vae_override: Path | None = None,
+    encoder_override: Path | None = None,
     log: Callable[[str], None] | None = None,
 ) -> list[Path]:
     prefs = settings.load_prefs()
@@ -75,17 +96,21 @@ def generate(
     model = registry.get_base_model(model_id, prefs)
     if model is None:
         raise sdcpp.EngineError(f"Modèle inconnu : {model_id}")
-    missing = registry.missing_components(model)
-    if missing:
-        roles = ", ".join(c.role for c in missing)
-        raise sdcpp.EngineError(
-            f"« {model.name} » incomplet (manque : {roles}). "
-            "Téléchargez-le depuis l'onglet Bibliothèque.")
 
-    diffusion = _component(model, "diffusion")
-    vae = _component(model, "vae")
-    enc = _component(model, "text_encoder")
+    # Composants du catalogue, éventuellement remplacés par des fichiers locaux.
+    diffusion = Path(diffusion_override) if diffusion_override else _component(model, "diffusion")
+    vae = Path(vae_override) if vae_override else _component(model, "vae")
+    enc = Path(encoder_override) if encoder_override else _component(model, "text_encoder")
     uncond = _component(model, "uncond")
+
+    # Vérifie que les fichiers nécessaires sont présents (après surcharges).
+    need = {"diffusion": diffusion, "vae": vae, "text_encoder": enc}
+    absent = [role for role, p in need.items() if p is None or not Path(p).is_file()]
+    if absent:
+        raise sdcpp.EngineError(
+            f"« {model.name} » : fichiers manquants ({', '.join(absent)}). "
+            "Téléchargez le modèle (onglet Bibliothèque) ou fournissez des "
+            "fichiers locaux valides.")
 
     flags, gpu_index = _resolved_flags(prefs)
     lora_dir = settings.LORA_DIR if loras else None

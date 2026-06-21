@@ -169,6 +169,22 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                                                     "(qualité)", size="sm")
                     gr.Markdown(f"Déposez vos fichiers LoRA dans `{settings.LORA_DIR}`")
 
+                with gr.Accordion("📂 Fichiers locaux (modèle perso)", open=False):
+                    gr.Markdown(
+                        "Pour utiliser un modèle **téléchargé ailleurs** : déposez "
+                        f"le(s) fichier(s) dans `{settings.CUSTOM_DIR}` puis "
+                        "sélectionnez-le ci-dessous. Vide = modèle du catalogue. "
+                        "Le VAE/encodeur non remplacés viennent de l'onglet courant.")
+                    custom_diff = gr.Dropdown(gen_engine.list_custom_models(),
+                                              value=None, label="Diffusion (local)")
+                    with gr.Row():
+                        custom_vae = gr.Dropdown(gen_engine.list_custom_models(),
+                                                 value=None, label="VAE (local)")
+                        custom_enc = gr.Dropdown(gen_engine.list_custom_models(),
+                                                 value=None, label="Encodeur (local)")
+                    refresh_custom = gr.Button("↻ Rafraîchir les fichiers locaux",
+                                               size="sm")
+
                 ratio = gr.Dropdown(list(RATIOS.keys()),
                                     value=_ratio_label(d.get("width", 1024),
                                                        d.get("height", 1024)),
@@ -236,6 +252,13 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
 
         clear_lora.click(clear_loras, outputs=[lora1, lora1_w, lora2, lora2_w])
 
+        def _refresh_custom():
+            c = gen_engine.list_custom_models()
+            return gr.update(choices=c), gr.update(choices=c), gr.update(choices=c)
+
+        refresh_custom.click(_refresh_custom,
+                             outputs=[custom_diff, custom_vae, custom_enc])
+
         def on_ratio(label):
             w, h = RATIOS.get(label, (0, 0))
             if not w:
@@ -295,6 +318,7 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
         def do_generate(system_prompt, prompt, negative, init_image, strength,
                         width, height, steps, cfg, sampler, schedule, flow_shift,
                         seed, batch, lora1, lora1_w, lora2, lora2_w,
+                        custom_diff, custom_vae, custom_enc,
                         progress=gr.Progress()):
             if not (prompt or "").strip() and init_image is None:
                 raise gr.Error("Saisissez un prompt (ou une image de départ).")
@@ -338,7 +362,10 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
                     height=int(height), seed=base_seed, batch_count=int(batch),
                     sampler=sampler, schedule=schedule,
                     flow_shift=float(flow_shift or 0.0), init_image=init_path,
-                    strength=float(strength), loras=loras, log=log)
+                    strength=float(strength), loras=loras,
+                    diffusion_override=gen_engine.custom_path(custom_diff),
+                    vae_override=gen_engine.custom_path(custom_vae),
+                    encoder_override=gen_engine.custom_path(custom_enc), log=log)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
                 return [], "\n".join(logs), []
@@ -352,7 +379,8 @@ def build_generative_tab(model_id: str, title: str, is_ideogram: bool = False,
             do_generate,
             inputs=[system_prompt, prompt, negative, init_image, strength, width,
                     height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
-                    lora1, lora1_w, lora2, lora2_w],
+                    lora1, lora1_w, lora2, lora2_w,
+                    custom_diff, custom_vae, custom_enc],
             outputs=[gallery, logbox, last_paths],
         )
 
