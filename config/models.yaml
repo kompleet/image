@@ -87,18 +87,19 @@ base_models:
       NON CENSURÉ (par lodestones). Très polyvalent et artistique. Diffusion GGUF
       + encodeur T5-XXL (déchargé en RAM) + VAE FLUX.1.
     sources:
-      # NB : noms de dépôts à confirmer au 1er téléchargement (correspondance souple).
+      # silveroxides/Chroma-GGUF ne contient QUE les GGUF de diffusion.
+      # On pointe sur Chroma1-HD (version finale). Quants dispo : Q4_0/Q8_0/BF16.
       diffusion:
         repo: silveroxides/Chroma-GGUF
-        match: "*{quant}.gguf"
-        quantizable: true
+        match: "Chroma1-HD/Chroma1-HD-Q4_0.gguf"
       t5xxl:
         repo: city96/t5-v1_1-xxl-encoder-gguf
         match: "t5-v1_1-xxl-encoder-{enc_quant}.gguf"
         quantizable: true
       vae:
-        repo: silveroxides/Chroma-GGUF
-        match: "*ae*.safetensors"
+        # VAE de FLUX.1 (ae.safetensors) — FLUX.1-schnell est Apache 2.0 (ungated).
+        repo: black-forest-labs/FLUX.1-schnell
+        match: "ae.safetensors"
     defaults:
       steps: 26
       cfg_scale: 4.0
