@@ -97,27 +97,38 @@ def generate(
     if model is None:
         raise sdcpp.EngineError(f"Modèle inconnu : {model_id}")
 
-    # Composants du catalogue, éventuellement remplacés par des fichiers locaux.
-    diffusion = Path(diffusion_override) if diffusion_override else _component(model, "diffusion")
-    vae = Path(vae_override) if vae_override else _component(model, "vae")
-    enc = Path(encoder_override) if encoder_override else _component(model, "text_encoder")
-    uncond = _component(model, "uncond")
-
-    # Vérifie que les fichiers nécessaires sont présents (après surcharges).
-    need = {"diffusion": diffusion, "vae": vae, "text_encoder": enc}
-    absent = [role for role, p in need.items() if p is None or not Path(p).is_file()]
-    if absent:
-        raise sdcpp.EngineError(
-            f"« {model.name} » : fichiers manquants ({', '.join(absent)}). "
-            "Téléchargez le modèle (onglet Bibliothèque) ou fournissez des "
-            "fichiers locaux valides.")
+    # Famille « checkpoint complet » (SDXL) : un seul fichier via -m.
+    has_full = any(c.role == "model" for c in model.components)
+    if has_full:
+        model_path = Path(diffusion_override) if diffusion_override \
+            else _component(model, "model")
+        vae = Path(vae_override) if vae_override else _component(model, "vae")
+        diffusion = enc = uncond = None
+        if model_path is None or not Path(model_path).is_file():
+            raise sdcpp.EngineError(
+                f"« {model.name} » : checkpoint manquant. Téléchargez-le "
+                "(onglet Bibliothèque) ou fournissez un fichier local.")
+    else:
+        model_path = None
+        diffusion = Path(diffusion_override) if diffusion_override else _component(model, "diffusion")
+        vae = Path(vae_override) if vae_override else _component(model, "vae")
+        enc = Path(encoder_override) if encoder_override else _component(model, "text_encoder")
+        uncond = _component(model, "uncond")
+        need = {"diffusion": diffusion, "vae": vae, "text_encoder": enc}
+        absent = [role for role, p in need.items() if p is None or not Path(p).is_file()]
+        if absent:
+            raise sdcpp.EngineError(
+                f"« {model.name} » : fichiers manquants ({', '.join(absent)}). "
+                "Téléchargez le modèle (onglet Bibliothèque) ou fournissez des "
+                "fichiers locaux valides.")
 
     flags, gpu_index = _resolved_flags(prefs)
     lora_dir = settings.LORA_DIR if loras else None
     final_prompt = _apply_loras(prompt, loras or [])
 
     req = GenRequest(
-        diffusion_model=diffusion, vae=vae, text_encoder=enc, uncond_model=uncond,
+        diffusion_model=diffusion, vae=vae, model_path=model_path,
+        text_encoder=enc, uncond_model=uncond,
         prompt=final_prompt, negative=negative,
         steps=steps, cfg_scale=cfg_scale,
         sampler=sampler or model.defaults.get("sampler", "euler"),

@@ -13,38 +13,33 @@
 base_models:
 
   # --------------------------------------------------------------------------
-  - id: zimage-turbo
-    name: "Z-Image Turbo"
-    family: zimage
-    tags: [turbo, rapide, polyvalent]
+  - id: sdxl-realvis
+    name: "SDXL — RealVisXL V5.0"
+    family: sdxl
+    tags: [photoréalisme, polyvalent, controlnet]
     description: >
-      Modèle « Turbo » très rapide (8 étapes, CFG 1.0). Excellent rapport
-      vitesse/qualité, idéal pour itérer. Recommandé en premier sur petite VRAM.
+      SDXL photoréaliste haut de gamme (RealVisXL V5.0). Checkpoint complet
+      unique (CLIP + VAE inclus), ~6,5 Go — tient en VRAM dès 8 Go, pas
+      d'encodeur séparé. Modèle « eps » classique : DPM++ 2M + Karras.
     sources:
-      diffusion:
-        repo: unsloth/Z-Image-Turbo-GGUF
-        match: "Z-Image-Turbo-{quant}.gguf"
-        quantizable: true
-      vae:
-        repo: Comfy-Org/z_image_turbo
-        match: "split_files/vae/*.safetensors"
-      text_encoder:
-        repo: Qwen/Qwen3-4B-GGUF
-        match: "Qwen3-4B-{enc_quant}.gguf"
-        quantizable: true
+      # Checkpoint SDXL complet (un seul fichier via -m). Remplaçable par un
+      # autre SDXL (Juggernaut, etc.) dans models/custom/ ou ici.
+      model:
+        repo: SG161222/RealVisXL_V5.0
+        match: "RealVisXL_V5.0_fp16.safetensors"
     defaults:
-      steps: 8
-      cfg_scale: 1.0
-      sampler: res_multistep
-      scheduler: simple
+      steps: 30
+      cfg_scale: 5.0
+      sampler: dpm++2m
+      scheduler: karras
       width: 1024
       height: 1024
-      supports_negative: false
+      supports_negative: true
     presets:
-      - {name: "⚡ Rapide (recommandé)", sampler: res_multistep, scheduler: simple, steps: 8,  cfg_scale: 1.0}
-      - {name: "Net (euler · sgm)",       sampler: euler,         scheduler: sgm_uniform, steps: 9,  cfg_scale: 1.0}
-      - {name: "Détail (dpm++ 2M)",       sampler: dpm++2m,       scheduler: simple, steps: 12, cfg_scale: 1.0}
-    vram_min_gb: 6
+      - {name: "📷 Photoréaliste (recommandé)", sampler: dpm++2m, scheduler: karras, steps: 30, cfg_scale: 5.0}
+      - {name: "Net (dpm++ 2M)",                sampler: dpm++2m, scheduler: karras, steps: 25, cfg_scale: 6.0}
+      - {name: "Rapide (euler a)",              sampler: euler_a, scheduler: karras, steps: 22, cfg_scale: 6.0}
+    vram_min_gb: 8
 
   # --------------------------------------------------------------------------
   - id: flux2-klein-9b
@@ -54,14 +49,14 @@ base_models:
     description: >
       FLUX.2 Klein 9B en GGUF (distillé, rapide : 4 pas, CFG 1.0). Très haute
       qualité d'image. Diffusion Q4 ≈ 5 Go en VRAM ; encodeur Qwen3-8B déchargé
-      en RAM. Tourne sur 10–12 Go de VRAM (plus lent que Z-Image).
+      en RAM. Tourne sur 10–12 Go de VRAM.
     sources:
       diffusion:
         repo: unsloth/FLUX.2-klein-9B-GGUF
         match: "*klein-9B*{quant}.gguf"
         quantizable: true
       vae:
-        # FLUX.2 partage le même autoencodeur qu'Ideogram 4 (flux2_ae).
+        # Autoencodeur flux2_ae (dépôt HF qui l'héberge).
         repo: Comfy-Org/Ideogram-4
         match: "vae/*.safetensors"
       text_encoder:
@@ -86,17 +81,6 @@ base_models:
 #  Upscalers (PyTorch, installés à la demande via scripts/setup_upscalers.py)
 # ============================================================================
 upscalers:
-
-  - id: aurasr
-    name: "AuraSR v2"
-    engine: pytorch
-    tags: [rapide, léger, GAN, ×4]
-    description: >
-      Upscaler GAN (GigaGAN) en une seule passe : rapide et léger, sans NCCL ni
-      flash-attn — idéal sous Windows. ×4 natif (×2/×8 dérivés). Plutôt photo.
-    weights_repo: fal/AuraSR-v2
-    pip_package: aura-sr
-    vram_min_gb: 6
 
   - id: drct-l
     name: "4x DRCT-L"

@@ -64,8 +64,8 @@ def build_app() -> gr.Blocks:
                    head=_HEAD) as demo:
         gr.HTML(
             f"<div id='atelier-header'><h1>🎨 {APP_NAME}</h1>"
-            f"<div class='sub'>Génération d'images locale · Ideogram 4 · "
-            f"Z-Image Turbo · GGUF · v{__version__}</div></div>")
+            f"<div class='sub'>Génération d'images locale · SDXL · Flux.2 · "
+            f"upscale créatif · v{__version__}</div></div>")
 
         if sd_cli is None:
             gr.Markdown("> ⚠️ **Binaire `sd-cli` introuvable.** Lancez "
@@ -79,7 +79,7 @@ def build_app() -> gr.Blocks:
         pending_upscale = gr.State(None)
 
         with gr.Tabs() as tabs:
-            build_generative_tab("zimage-turbo", "🌀 Z-Image Turbo",
+            build_generative_tab("sdxl-realvis", "📷 SDXL (RealVisXL)",
                                  tabs=tabs, pending_upscale=pending_upscale)
             build_generative_tab("flux2-klein-9b", "🟣 Flux.2 Klein 9B",
                                  tabs=tabs, pending_upscale=pending_upscale)

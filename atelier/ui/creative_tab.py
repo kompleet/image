@@ -20,8 +20,8 @@ def _model_choices() -> list[tuple[str, str]]:
 
 def build_creative_tab():
     choices = _model_choices()
-    # Z-Image Turbo par défaut (rapide et efficace pour le raffinage).
-    default = next((v for _, v in choices if v == "zimage-turbo"),
+    # SDXL par défaut (le raffineur « classique » de Magnific/Ultimate SD Upscale).
+    default = next((v for _, v in choices if v == "sdxl-realvis"),
                    choices[0][1] if choices else None)
 
     with gr.Tab("✨ Upscale créatif"):

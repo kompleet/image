@@ -17,8 +17,9 @@ class EngineError(RuntimeError):
 
 @dataclass
 class GenRequest:
-    diffusion_model: Path
-    vae: Path
+    diffusion_model: Path | None = None   # modèle de diffusion seul (GGUF flow)
+    vae: Path | None = None
+    model_path: Path | None = None        # checkpoint complet (SDXL) -> -m
     text_encoder: Path | None = None
     uncond_model: Path | None = None
     prompt: str = ""
@@ -59,16 +60,23 @@ def _require(*paths: Path | None) -> None:
 
 
 def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
-    _require(req.diffusion_model, req.vae, req.text_encoder,
+    _require(req.model_path, req.diffusion_model, req.vae, req.text_encoder,
              req.uncond_model, req.init_image)
 
-    cmd: list[str] = [str(sd_cli), "--mode", "img_gen",
-                      "--diffusion-model", str(req.diffusion_model)]
-    if req.uncond_model:
-        cmd += ["--uncond-diffusion-model", str(req.uncond_model)]
-    cmd += ["--vae", str(req.vae)]
-    if req.text_encoder:
-        cmd += ["--llm", str(req.text_encoder)]
+    cmd: list[str] = [str(sd_cli), "--mode", "img_gen"]
+    if req.model_path:
+        # Checkpoint complet (SDXL) : CLIP + VAE inclus.
+        cmd += ["-m", str(req.model_path)]
+        if req.vae:
+            cmd += ["--vae", str(req.vae)]
+    else:
+        cmd += ["--diffusion-model", str(req.diffusion_model)]
+        if req.uncond_model:
+            cmd += ["--uncond-diffusion-model", str(req.uncond_model)]
+        if req.vae:
+            cmd += ["--vae", str(req.vae)]
+        if req.text_encoder:
+            cmd += ["--llm", str(req.text_encoder)]
 
     cmd += ["-p", req.prompt]
     if req.negative and req.cfg_scale > 1.0:

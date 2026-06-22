@@ -23,7 +23,6 @@ class UpscaleError(RuntimeError):
 
 
 _RUNNERS = {
-    "aurasr": "run_aurasr.py",
     "drct-l": "run_spandrel.py",
     "nomos2-drct-l": "run_spandrel.py",
 }
