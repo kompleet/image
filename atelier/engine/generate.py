@@ -12,6 +12,11 @@ from . import sdcpp
 from .sdcpp import GenRequest
 
 
+def cancel() -> str:
+    """Annule la génération en cours (termine le process sd-cli)."""
+    return sdcpp.cancel_active()
+
+
 def list_custom_models() -> list[str]:
     """Noms des fichiers de modèle déposés dans models/custom/ (téléchargés
     manuellement ailleurs)."""
@@ -84,6 +89,7 @@ def generate(
     diffusion_override: Path | None = None,
     vae_override: Path | None = None,
     encoder_override: Path | None = None,
+    preview_path: Path | None = None,
     log: Callable[[str], None] | None = None,
 ) -> list[Path]:
     prefs = settings.load_prefs()
@@ -144,7 +150,8 @@ def generate(
         flow_shift=float(flow_shift or 0.0),
         width=width, height=height, seed=seed, batch_count=batch_count,
         init_image=init_image, strength=strength,
-        lora_dir=lora_dir, flags=flags, gpu_index=gpu_index,
+        lora_dir=lora_dir, preview_path=preview_path, flags=flags,
+        gpu_index=gpu_index,
     )
     out = sdcpp.unique_output(model.family)
     cmd = sdcpp.build_gen_cmd(sd_cli, req, out)

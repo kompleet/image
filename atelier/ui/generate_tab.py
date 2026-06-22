@@ -154,17 +154,22 @@ def build_generative_tab(model_id: str, title: str,
                                      precision=0)
                     batch = gr.Slider(1, 8, value=1, step=1, label="Images")
 
-                run = gr.Button(f"✨ Générer ({title})", variant="primary", size="lg")
+                with gr.Row():
+                    run = gr.Button(f"✨ Générer ({title})", variant="primary",
+                                    size="lg", scale=3)
+                    stop = gr.Button("⏹️ Annuler", variant="stop", scale=1)
 
             # ----- Sorties -----
             with gr.Column(scale=4):
+                preview = gr.Image(label="Aperçu (temps réel)", height=320,
+                                   visible=True)
                 gallery = gr.Gallery(label="Résultats (légende = seed)", columns=2,
-                                     height=680, object_fit="contain",
+                                     height=420, object_fit="contain",
                                      show_label=True, format="png",
                                      show_download_button=True)
                 send_upscale = gr.Button("📤 Envoyer l'image sélectionnée "
                                          "vers l'Upscale")
-                logbox = gr.Textbox(label="Journal", lines=12, max_lines=24,
+                logbox = gr.Textbox(label="Journal", lines=10, max_lines=24,
                                     autoscroll=True, elem_classes="log-box")
 
         last_paths = gr.State([])
@@ -216,6 +221,10 @@ def build_generative_tab(model_id: str, title: str,
                         seed, batch, lora1, lora1_w, lora2, lora2_w,
                         custom_diff, custom_vae, custom_enc,
                         progress=gr.Progress()):
+            import queue
+            import threading
+            import time
+
             if not (prompt or "").strip() and init_image is None:
                 raise gr.Error("Saisissez un prompt (ou une image de départ).")
 
@@ -227,55 +236,83 @@ def build_generative_tab(model_id: str, title: str,
             if base_seed < 0:
                 base_seed = random.randint(0, 2**31 - 1)
 
-            logs: list[str] = []
+            settings.ensure_dirs()
             init_path = None
             if init_image is not None:
-                settings.ensure_dirs()
                 init_path = settings.TMP_DIR / "i2i_init.png"
                 init_image.save(init_path)
 
             loras = [(lora1, float(lora1_w)), (lora2, float(lora2_w))]
             loras = [(n, w) for n, w in loras if n]
 
+            preview_path = settings.TMP_DIR / f"preview_{int(time.time()*1000)}.png"
+            try:
+                preview_path.unlink()
+            except OSError:
+                pass
+
             total = max(1, int(steps))
             step_re = re.compile(rf"(\d+)\s*/\s*{total}\b")
+            q: "queue.Queue[str | None]" = queue.Queue()
+            state: dict = {}
 
-            def log(line: str):
-                logs.append(line)
-                mt = step_re.search(line)
-                if mt:
-                    cur = min(int(mt.group(1)), total)
-                    progress(0.05 + 0.9 * cur / total,
-                             desc=f"Génération… étape {cur}/{total}")
+            def worker():
+                try:
+                    outs = gen_engine.generate(
+                        model_id=model_id, prompt=full_prompt,
+                        negative=negative or "", steps=int(steps),
+                        cfg_scale=float(cfg), width=int(width), height=int(height),
+                        seed=base_seed, batch_count=int(batch), sampler=sampler,
+                        schedule=schedule, flow_shift=float(flow_shift or 0.0),
+                        init_image=init_path, strength=float(strength), loras=loras,
+                        diffusion_override=gen_engine.custom_path(custom_diff),
+                        vae_override=gen_engine.custom_path(custom_vae),
+                        encoder_override=gen_engine.custom_path(custom_enc),
+                        preview_path=preview_path, log=q.put)
+                    state["outs"] = [str(p) for p in outs]
+                except Exception as exc:  # noqa: BLE001
+                    state["err"] = str(exc)
+                finally:
+                    q.put(None)
 
+            threading.Thread(target=worker, daemon=True).start()
+            logs: list[str] = []
             progress(0.02, desc="Chargement du modèle…")
-            try:
-                outs = gen_engine.generate(
-                    model_id=model_id, prompt=full_prompt, negative=negative or "",
-                    steps=int(steps), cfg_scale=float(cfg), width=int(width),
-                    height=int(height), seed=base_seed, batch_count=int(batch),
-                    sampler=sampler, schedule=schedule,
-                    flow_shift=float(flow_shift or 0.0), init_image=init_path,
-                    strength=float(strength), loras=loras,
-                    diffusion_override=gen_engine.custom_path(custom_diff),
-                    vae_override=gen_engine.custom_path(custom_vae),
-                    encoder_override=gen_engine.custom_path(custom_enc), log=log)
-            except Exception as exc:  # noqa: BLE001
-                logs.append(f"\n[ERREUR] {exc}")
-                return [], "\n".join(logs), []
-            progress(1.0, desc="Terminé")
-            paths = [str(p) for p in outs]
-            items = [(p, f"seed {base_seed + i}") for i, p in enumerate(paths)]
-            return items, "\n".join(logs), paths
+            while True:
+                try:
+                    line = q.get(timeout=0.4)
+                except queue.Empty:
+                    line = ""
+                if line is None:
+                    break
+                if line:
+                    logs.append(line)
+                    mt = step_re.search(line)
+                    if mt:
+                        cur = min(int(mt.group(1)), total)
+                        progress(0.05 + 0.9 * cur / total,
+                                 desc=f"étape {cur}/{total}")
+                prev = str(preview_path) if preview_path.exists() else gr.update()
+                yield gr.update(), prev, "\n".join(logs[-400:]), gr.update()
 
-        run.click(
+            if "err" in state:
+                logs.append(f"\n[ERREUR] {state['err']}")
+                yield [], gr.update(value=None), "\n".join(logs), []
+                return
+            progress(1.0, desc="Terminé")
+            paths = state.get("outs", [])
+            items = [(p, f"seed {base_seed + i}") for i, p in enumerate(paths)]
+            yield items, gr.update(value=None), "\n".join(logs), paths
+
+        gen_evt = run.click(
             do_generate,
             inputs=[system_prompt, prompt, negative, init_image, strength, width,
                     height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
                     lora1, lora1_w, lora2, lora2_w,
                     custom_diff, custom_vae, custom_enc],
-            outputs=[gallery, logbox, last_paths],
+            outputs=[gallery, preview, logbox, last_paths],
         )
+        stop.click(lambda: gen_engine.cancel(), outputs=None, cancels=[gen_evt])
 
         def _on_select(evt: gr.SelectData):
             return evt.index

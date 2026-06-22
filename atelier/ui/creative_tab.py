@@ -37,7 +37,8 @@ def build_creative_tab():
                 image = gr.Image(label="Image à agrandir", type="pil", height=380)
                 model = gr.Dropdown(choices=choices, value=default,
                                     label="Modèle de raffinage")
-                scale = gr.Radio([2, 4], value=2, label="Facteur")
+                scale = gr.Radio([2, 4, 8], value=2,
+                                 label="Facteur (×8 = très long, beaucoup de tuiles)")
                 creativity = gr.Slider(0.1, 0.6, value=0.3, step=0.05,
                                        label="Créativité (détail ajouté / dérive)")
                 prompt = gr.Textbox(

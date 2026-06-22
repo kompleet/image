@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -13,6 +14,28 @@ from .. import settings
 
 class EngineError(RuntimeError):
     pass
+
+
+# Registre des process sd-cli en cours, pour pouvoir les annuler.
+_ACTIVE: set[subprocess.Popen] = set()
+_LOCK = threading.Lock()
+_CANCELLED = False
+
+
+def cancel_active() -> str:
+    """Termine tous les process sd-cli en cours (bouton « Annuler »)."""
+    global _CANCELLED
+    with _LOCK:
+        procs = list(_ACTIVE)
+    if not procs:
+        return "Aucune génération en cours."
+    _CANCELLED = True
+    for p in procs:
+        try:
+            p.terminate()
+        except Exception:  # noqa: BLE001
+            pass
+    return "⏹️ Génération annulée."
 
 
 @dataclass
@@ -39,6 +62,7 @@ class GenRequest:
     init_image: Path | None = None
     strength: float = 0.6
     lora_dir: Path | None = None       # --lora-model-dir
+    preview_path: Path | None = None   # aperçu temps réel (--preview proj)
     flags: dict[str, bool] = field(default_factory=dict)
     gpu_index: int | None = None
 
@@ -106,6 +130,9 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
     if req.lora_dir:
         cmd += ["--lora-model-dir", str(req.lora_dir)]
 
+    if req.preview_path:
+        cmd += ["--preview", "proj", "--preview-path", str(req.preview_path),
+                "--preview-interval", "1"]
     cmd += _flag_args(req.flags)
     cmd += ["-o", str(output), "-v"]
     return cmd
@@ -124,20 +151,31 @@ def build_upscale_cmd(sd_cli: Path, init_image: Path, upscale_model: Path,
 
 def run(cmd: list[str], log: Callable[[str], None] | None = None,
         gpu_index: int | None = None) -> None:
+    global _CANCELLED
     env = None
     if gpu_index is not None:
         env = {**os.environ, "CUDA_VISIBLE_DEVICES": str(gpu_index)}
     if log:
         log("$ " + " ".join(_q(c) for c in cmd))
+    _CANCELLED = False
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, bufsize=1, cwd=str(settings.ROOT), env=env,
                             encoding="utf-8", errors="replace")
-    assert proc.stdout is not None
-    for line in proc.stdout:
-        if log:
-            log(line.rstrip("\n"))
-    if proc.wait() != 0:
-        raise EngineError(f"sd-cli s'est terminé avec le code {proc.returncode}.")
+    with _LOCK:
+        _ACTIVE.add(proc)
+    try:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            if log:
+                log(line.rstrip("\n"))
+        code = proc.wait()
+    finally:
+        with _LOCK:
+            _ACTIVE.discard(proc)
+    if _CANCELLED:
+        raise EngineError("Interrompu par l'utilisateur.")
+    if code != 0:
+        raise EngineError(f"sd-cli s'est terminé avec le code {code}.")
 
 
 def _q(s: str) -> str:
