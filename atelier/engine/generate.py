@@ -103,7 +103,7 @@ def generate(
         model_path = Path(diffusion_override) if diffusion_override \
             else _component(model, "model")
         vae = Path(vae_override) if vae_override else _component(model, "vae")
-        diffusion = enc = uncond = None
+        diffusion = enc = uncond = t5xxl = clip_l = None
         if model_path is None or not Path(model_path).is_file():
             raise sdcpp.EngineError(
                 f"« {model.name} » : checkpoint manquant. Téléchargez-le "
@@ -114,8 +114,15 @@ def generate(
         vae = Path(vae_override) if vae_override else _component(model, "vae")
         enc = Path(encoder_override) if encoder_override else _component(model, "text_encoder")
         uncond = _component(model, "uncond")
-        need = {"diffusion": diffusion, "vae": vae, "text_encoder": enc}
+        t5xxl = _component(model, "t5xxl")
+        clip_l = _component(model, "clip_l")
+        # Composants de texte requis : au moins un encodeur (llm OU t5xxl).
+        need = {"diffusion": diffusion, "vae": vae}
+        if not t5xxl:
+            need["text_encoder"] = enc
         absent = [role for role, p in need.items() if p is None or not Path(p).is_file()]
+        if t5xxl is not None and not Path(t5xxl).is_file():
+            absent.append("t5xxl")
         if absent:
             raise sdcpp.EngineError(
                 f"« {model.name} » : fichiers manquants ({', '.join(absent)}). "
@@ -128,7 +135,8 @@ def generate(
 
     req = GenRequest(
         diffusion_model=diffusion, vae=vae, model_path=model_path,
-        text_encoder=enc, uncond_model=uncond,
+        text_encoder=enc, t5xxl=t5xxl, clip_l=clip_l, uncond_model=uncond,
+        extra_flags=list(model.defaults.get("extra_flags", [])),
         prompt=final_prompt, negative=negative,
         steps=steps, cfg_scale=cfg_scale,
         sampler=sampler or model.defaults.get("sampler", "euler"),

@@ -20,8 +20,11 @@ class GenRequest:
     diffusion_model: Path | None = None   # modèle de diffusion seul (GGUF flow)
     vae: Path | None = None
     model_path: Path | None = None        # checkpoint complet (SDXL) -> -m
-    text_encoder: Path | None = None
+    text_encoder: Path | None = None       # --llm (Qwen, Qwen-Image…)
+    t5xxl: Path | None = None              # --t5xxl (Chroma, Flux.1…)
+    clip_l: Path | None = None             # --clip_l
     uncond_model: Path | None = None
+    extra_flags: list[str] = field(default_factory=list)
     prompt: str = ""
     negative: str = ""
     steps: int = 8
@@ -61,7 +64,7 @@ def _require(*paths: Path | None) -> None:
 
 def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
     _require(req.model_path, req.diffusion_model, req.vae, req.text_encoder,
-             req.uncond_model, req.init_image)
+             req.t5xxl, req.clip_l, req.uncond_model, req.init_image)
 
     cmd: list[str] = [str(sd_cli), "--mode", "img_gen"]
     if req.model_path:
@@ -77,7 +80,12 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
             cmd += ["--vae", str(req.vae)]
         if req.text_encoder:
             cmd += ["--llm", str(req.text_encoder)]
+        if req.t5xxl:
+            cmd += ["--t5xxl", str(req.t5xxl)]
+        if req.clip_l:
+            cmd += ["--clip_l", str(req.clip_l)]
 
+    cmd += list(req.extra_flags)
     cmd += ["-p", req.prompt]
     if req.negative and req.cfg_scale > 1.0:
         cmd += ["-n", req.negative]

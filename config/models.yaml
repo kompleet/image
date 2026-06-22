@@ -77,6 +77,78 @@ base_models:
       - {name: "Qualité (dpm++ 2M)",     sampler: dpm++2m,       scheduler: simple, steps: 10, cfg_scale: 1.0}
     vram_min_gb: 10
 
+  # --------------------------------------------------------------------------
+  - id: chroma
+    name: "Chroma (non censuré)"
+    family: chroma
+    tags: [non-censuré, flux, artistique]
+    description: >
+      Chroma — modèle basé sur FLUX.1 schnell, entièrement RÉ-ENTRAÎNÉ et
+      NON CENSURÉ (par lodestones). Très polyvalent et artistique. Diffusion GGUF
+      + encodeur T5-XXL (déchargé en RAM) + VAE FLUX.1.
+    sources:
+      # NB : noms de dépôts à confirmer au 1er téléchargement (correspondance souple).
+      diffusion:
+        repo: silveroxides/Chroma-GGUF
+        match: "*{quant}.gguf"
+        quantizable: true
+      t5xxl:
+        repo: city96/t5-v1_1-xxl-encoder-gguf
+        match: "t5-v1_1-xxl-encoder-{enc_quant}.gguf"
+        quantizable: true
+      vae:
+        repo: silveroxides/Chroma-GGUF
+        match: "*ae*.safetensors"
+    defaults:
+      steps: 26
+      cfg_scale: 4.0
+      sampler: euler
+      scheduler: simple
+      width: 1024
+      height: 1024
+      supports_negative: true
+      extra_flags: ["--chroma-disable-dit-mask"]
+    presets:
+      - {name: "⚡ Recommandé", sampler: euler,   scheduler: simple, steps: 26, cfg_scale: 4.0}
+      - {name: "Détail (dpm++ 2M)", sampler: dpm++2m, scheduler: simple, steps: 30, cfg_scale: 4.5}
+    vram_min_gb: 10
+
+  # --------------------------------------------------------------------------
+  - id: qwen-image
+    name: "Qwen-Image"
+    family: qwen-image
+    tags: [qualité, texte, gros modèle]
+    description: >
+      Qwen-Image (MMDiT 20B) : excellent en texte dans l'image et composition.
+      Lourd : diffusion GGUF + encodeur Qwen2.5-VL (déchargé en RAM) + VAE.
+      Conseillé 12 Go+ (plus lent).
+    sources:
+      diffusion:
+        repo: city96/Qwen-Image-gguf
+        match: "qwen-image-{quant}.gguf"
+        quantizable: true
+      vae:
+        repo: Comfy-Org/Qwen-Image_ComfyUI
+        match: "split_files/vae/*.safetensors"
+      text_encoder:
+        # Encodeur Qwen2.5-VL. Pour une version NON CENSURÉE, déposez un GGUF
+        # « abliterated » dans models/custom/ et choisissez-le comme Encodeur local.
+        repo: unsloth/Qwen2.5-VL-7B-Instruct-GGUF
+        match: "Qwen2.5-VL-7B-Instruct-{enc_quant}.gguf"
+        quantizable: true
+    defaults:
+      steps: 20
+      cfg_scale: 2.5
+      sampler: euler
+      scheduler: simple
+      width: 1024
+      height: 1024
+      supports_negative: true
+    presets:
+      - {name: "⚡ Recommandé",     sampler: euler,   scheduler: simple, steps: 20, cfg_scale: 2.5}
+      - {name: "Détail (dpm++ 2M)", sampler: dpm++2m, scheduler: simple, steps: 28, cfg_scale: 3.0}
+    vram_min_gb: 12
+
 # ============================================================================
 #  Upscalers (PyTorch, installés à la demande via scripts/setup_upscalers.py)
 # ============================================================================
