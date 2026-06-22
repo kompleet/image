@@ -90,6 +90,10 @@ def generate(
     vae_override: Path | None = None,
     encoder_override: Path | None = None,
     preview_path: Path | None = None,
+    control_net: Path | None = None,
+    control_image: Path | None = None,
+    control_strength: float = 0.8,
+    canny: bool = False,
     log: Callable[[str], None] | None = None,
 ) -> list[Path]:
     prefs = settings.load_prefs()
@@ -150,8 +154,10 @@ def generate(
         flow_shift=float(flow_shift or 0.0),
         width=width, height=height, seed=seed, batch_count=batch_count,
         init_image=init_image, strength=strength,
-        lora_dir=lora_dir, preview_path=preview_path, flags=flags,
-        gpu_index=gpu_index,
+        lora_dir=lora_dir, preview_path=preview_path,
+        control_net=control_net, control_image=control_image,
+        control_strength=float(control_strength), canny=canny,
+        flags=flags, gpu_index=gpu_index,
     )
     out = sdcpp.unique_output(model.family)
     cmd = sdcpp.build_gen_cmd(sd_cli, req, out)

@@ -178,3 +178,14 @@ upscalers:
     model_url: "https://github.com/Phhofm/models/releases/download/4xNomos2_hq_drct-l/4xNomos2_hq_drct-l.safetensors"
     model_file: "4xNomos2_hq_drct-l.safetensors"
     vram_min_gb: 8
+
+# ============================================================================
+#  ControlNet (par famille de modèle) — expérimental
+# ============================================================================
+controlnets:
+  - id: sdxl-canny
+    name: "SDXL Canny"
+    family: sdxl
+    repo: xinsir/controlnet-canny-sdxl-1.0
+    match: "diffusion_pytorch_model.safetensors"
+    canny: true

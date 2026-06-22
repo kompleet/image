@@ -122,6 +122,33 @@ def load_upscalers() -> list[Upscaler]:
     return out
 
 
+@dataclass
+class ControlNet:
+    id: str
+    name: str
+    family: str
+    repo: str
+    match: str
+    canny: bool
+
+
+def load_controlnets() -> list[ControlNet]:
+    out = []
+    for c in _catalog().get("controlnets", []):
+        out.append(ControlNet(id=c["id"], name=c["name"], family=c["family"],
+                              repo=c["repo"], match=c["match"],
+                              canny=bool(c.get("canny"))))
+    return out
+
+
+def controlnets_for(family: str) -> list[ControlNet]:
+    return [c for c in load_controlnets() if c.family == family]
+
+
+def controlnet_component(cn: ControlNet) -> Component:
+    return Component("controlnet", cn.repo, cn.match, None)
+
+
 def get_base_model(model_id: str, prefs: dict[str, Any]) -> BaseModel | None:
     return next((m for m in load_base_models(prefs) if m.id == model_id), None)
 

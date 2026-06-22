@@ -120,6 +120,22 @@ def build_generative_tab(model_id: str, title: str,
                     refresh_custom = gr.Button("↻ Rafraîchir les fichiers locaux",
                                                size="sm")
 
+                _cns = registry.controlnets_for(m.family) if m else []
+                cn = _cns[0] if _cns else None
+                with gr.Accordion("🕹️ ControlNet (expérimental)",
+                                  open=False, visible=bool(cn)):
+                    gr.Markdown(
+                        f"**{cn.name if cn else ''}** — guide la composition par "
+                        "une image de contrôle (Canny). Cliquez d'abord sur "
+                        "Installer. *Expérimental : selon la version de sd.cpp.*")
+                    cn_enable = gr.Checkbox(value=False, label="Activer ControlNet")
+                    cn_image = gr.Image(label="Image de contrôle", type="pil",
+                                        height=220)
+                    cn_strength = gr.Slider(0.1, 1.0, value=0.8, step=0.05,
+                                            label="Force ControlNet")
+                    cn_install = gr.Button("⬇️ Installer le ControlNet", size="sm")
+                    cn_log = gr.Textbox(label="", lines=3, elem_classes="log-box")
+
                 ratio = gr.Dropdown(list(RATIOS.keys()),
                                     value=_ratio_label(d.get("width", 1024),
                                                        d.get("height", 1024)),
@@ -195,6 +211,20 @@ def build_generative_tab(model_id: str, title: str,
         refresh_custom.click(_refresh_custom,
                              outputs=[custom_diff, custom_vae, custom_enc])
 
+        if cn is not None:
+            def _install_cn():
+                from .. import downloader
+                logs: list[str] = []
+                try:
+                    downloader.download_component(
+                        registry.controlnet_component(cn), log=logs.append)
+                    logs.append("✅ ControlNet installé.")
+                except Exception as exc:  # noqa: BLE001
+                    logs.append(f"[ERREUR] {exc}")
+                return "\n".join(logs)
+
+            cn_install.click(_install_cn, outputs=[cn_log])
+
         def on_ratio(label):
             w, h = RATIOS.get(label, (0, 0))
             if not w:
@@ -220,6 +250,7 @@ def build_generative_tab(model_id: str, title: str,
                         width, height, steps, cfg, sampler, schedule, flow_shift,
                         seed, batch, lora1, lora1_w, lora2, lora2_w,
                         custom_diff, custom_vae, custom_enc,
+                        cn_enable, cn_image, cn_strength,
                         progress=gr.Progress()):
             import queue
             import threading
@@ -227,6 +258,19 @@ def build_generative_tab(model_id: str, title: str,
 
             if not (prompt or "").strip() and init_image is None:
                 raise gr.Error("Saisissez un prompt (ou une image de départ).")
+
+            # ControlNet (si activé et installé).
+            control_net = control_image_path = None
+            cn_canny = False
+            if cn is not None and cn_enable and cn_image is not None:
+                cnp = registry.resolve_component_path(
+                    registry.controlnet_component(cn))
+                if cnp is None:
+                    raise gr.Error("ControlNet non installé (bouton « Installer »).")
+                settings.ensure_dirs()
+                control_image_path = settings.TMP_DIR / "control.png"
+                cn_image.save(control_image_path)
+                control_net, cn_canny = cnp, cn.canny
 
             full_prompt = prompt or ""
             if (system_prompt or "").strip():
@@ -268,6 +312,8 @@ def build_generative_tab(model_id: str, title: str,
                         diffusion_override=gen_engine.custom_path(custom_diff),
                         vae_override=gen_engine.custom_path(custom_vae),
                         encoder_override=gen_engine.custom_path(custom_enc),
+                        control_net=control_net, control_image=control_image_path,
+                        control_strength=float(cn_strength), canny=cn_canny,
                         preview_path=preview_path, log=q.put)
                     state["outs"] = [str(p) for p in outs]
                 except Exception as exc:  # noqa: BLE001
@@ -309,7 +355,8 @@ def build_generative_tab(model_id: str, title: str,
             inputs=[system_prompt, prompt, negative, init_image, strength, width,
                     height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
                     lora1, lora1_w, lora2, lora2_w,
-                    custom_diff, custom_vae, custom_enc],
+                    custom_diff, custom_vae, custom_enc,
+                    cn_enable, cn_image, cn_strength],
             outputs=[gallery, preview, logbox, last_paths],
         )
         stop.click(lambda: gen_engine.cancel(), outputs=None, cancels=[gen_evt])

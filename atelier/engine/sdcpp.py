@@ -63,6 +63,10 @@ class GenRequest:
     strength: float = 0.6
     lora_dir: Path | None = None       # --lora-model-dir
     preview_path: Path | None = None   # aperçu temps réel (--preview proj)
+    control_net: Path | None = None    # modèle ControlNet
+    control_image: Path | None = None  # image de contrôle
+    control_strength: float = 0.8
+    canny: bool = False                # préprocesseur Canny intégré à sd.cpp
     flags: dict[str, bool] = field(default_factory=dict)
     gpu_index: int | None = None
 
@@ -127,6 +131,12 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
         cmd += ["--flow-shift", f"{req.flow_shift}"]
     if req.init_image:
         cmd += ["-i", str(req.init_image), "--strength", f"{req.strength}"]
+    if req.control_net and req.control_image:
+        cmd += ["--control-net", str(req.control_net),
+                "--control-image", str(req.control_image),
+                "--control-strength", f"{req.control_strength}"]
+        if req.canny:
+            cmd += ["--canny"]
     if req.lora_dir:
         cmd += ["--lora-model-dir", str(req.lora_dir)]
 
