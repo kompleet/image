@@ -378,7 +378,19 @@ def build_generative_tab(model_id: str, title: str,
                         cur = min(int(mt.group(1)), total)
                         progress(0.05 + 0.9 * cur / total,
                                  desc=f"étape {cur}/{total}")
-                prev = str(preview_path) if preview_path.exists() else gr.update()
+                # On lit l'aperçu en mémoire (copie PIL) plutôt que de passer le
+                # chemin à Gradio : sous Windows sd-cli écrit ce fichier en
+                # continu et Gradio ne peut pas l'ouvrir pendant l'écriture
+                # (PermissionError). Si verrouillé à cet instant, on saute la
+                # frame au lieu de planter.
+                prev = gr.update()
+                if preview_path.exists():
+                    try:
+                        from PIL import Image
+                        with Image.open(preview_path) as _pim:
+                            prev = _pim.copy()
+                    except (OSError, ValueError):
+                        prev = gr.update()
                 yield gr.update(), prev, "\n".join(logs[-400:]), gr.update()
 
             if "err" in state:
