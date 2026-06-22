@@ -4,6 +4,7 @@ loras/
 bin/
 vendor/
 upscalers_repo/
+tools_repo/
 
 # Environnement portable
 python/
