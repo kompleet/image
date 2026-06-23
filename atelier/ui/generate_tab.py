@@ -157,8 +157,10 @@ def build_generative_tab(model_id: str, title: str,
                 with gr.Row():
                     steps = gr.Slider(1, 60, value=d.get("steps", 8), step=1,
                                       label="Étapes")
-                    cfg = gr.Slider(1.0, 12.0, value=d.get("cfg_scale", 1.0),
-                                    step=0.1, label="CFG")
+                    cfg = gr.Slider(0.7, 12.0, value=d.get("cfg_scale", 1.0),
+                                    step=0.1, label="CFG",
+                                    info="1.0 = pas de guidage (normal pour Flux "
+                                         "distillé). <1 ou >1 = expérimental.")
                 preset_list = _presets(model_id)
                 preset = gr.Dropdown(
                     [p["name"] for p in preset_list],
@@ -173,7 +175,11 @@ def build_generative_tab(model_id: str, title: str,
                                            label="Scheduler (sigmas)")
                 flow_shift = gr.Slider(
                     0.0, 12.0, value=float(d.get("flow_shift", 0.0)), step=0.1,
-                    label="Flow shift (0 = auto · ~3 = + de structure)")
+                    label="Flow shift",
+                    info="Décale le calendrier de bruit. ↑ (≈3–6) = plus de poids "
+                         "sur la composition/structure (utile en haute résolution) ; "
+                         "↓ (≈1–2) = plus de détails fins. 0 = auto (le modèle "
+                         "choisit selon la résolution).")
                 with gr.Row():
                     seed = gr.Number(value=-1, label="Seed (-1 = aléatoire)",
                                      precision=0)
