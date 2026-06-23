@@ -1,34 +1,50 @@
-"""Onglet Upscale créatif (façon Magnific) : pré-agrandissement + raffinage
-img2img par tuiles via Flux.2 Klein. Réutilise le moteur de génération.
+"""Onglet Upscale créatif (façon Magnific) : SDXL + ControlNet Tile (diffusers),
+raffinage par tuiles cohérentes. Outil PyTorch installable en 1 clic.
 """
 from __future__ import annotations
 
 import gradio as gr
 
-from .. import registry, settings
-from ..engine import generate as gen_engine
-
-REFINER_ID = "flux2-klein-9b"
+from ..engine import tools
 
 
 def build_creative_tab(tab_id="creative"):
     """Construit l'onglet Upscale créatif. Renvoie le composant Image d'entrée
-    (pour que les onglets de génération puissent y envoyer une image)."""
+    (pour que l'onglet de génération puisse y envoyer une image)."""
     with gr.Tab("✨ Upscale créatif", id=tab_id):
         gr.Markdown(
             "### Upscale créatif (façon Magnific / Topaz Wonder)\n"
-            "Pré-agrandit l'image, puis **ré-invente le détail** via **Flux.2 "
-            "Klein** (img2img **par tuiles**, recollées avec fondu). Le curseur "
-            "*Créativité* dose le détail ajouté.\n\n"
-            "> ⚠️ Le modèle se recharge à chaque tuile : **×2 = 4 tuiles** (rapide), "
-            "**×4 = 16 tuiles** (long), **×8 = très long**.")
+            "**SDXL + ControlNet Tile** : ré-invente le détail par tuiles, "
+            "ancrées sur l'image agrandie → tuiles cohérentes, **fondu sans "
+            "couture**. Le curseur *Créativité* dose le détail ajouté.\n\n"
+            "> ⚠️ Offload CPU activé pour tenir sur 11–12 Go : robuste mais "
+            "**lent** (chaque tuile = une passe SDXL). ×2 = 4 tuiles, ×4 = 16.")
+
+        with gr.Accordion("⚙️ Installer l'upscale créatif (en 1 clic)",
+                          open=not tools.upscale_is_installed()):
+            gr.Markdown(
+                "Repose sur PyTorch + diffusers et télécharge **~9 Go** de "
+                "modèles (SDXL base + ControlNet Tile + VAE). Aucune commande à "
+                "taper. Le premier téléchargement est long.")
+            install_log = gr.Textbox(label="Journal d'installation", lines=10,
+                                     autoscroll=True, elem_classes="log-box")
+            install_btn = gr.Button("⬇️ Installer (SDXL + ControlNet Tile)")
+
+            def _install():
+                for msg in tools.install_upscale_stream():
+                    yield msg
+
+            install_btn.click(_install, outputs=[install_log])
+
         with gr.Row():
             with gr.Column(scale=3):
                 image = gr.Image(label="Image à agrandir", type="pil", height=380)
                 scale = gr.Radio([2, 4, 8], value=2,
                                  label="Facteur (×8 = très long, beaucoup de tuiles)")
-                creativity = gr.Slider(0.1, 0.6, value=0.3, step=0.05,
+                creativity = gr.Slider(0.15, 0.6, value=0.35, step=0.05,
                                        label="Créativité (détail ajouté / dérive)")
+                cn_scale = gr.Slider(0.3, 1.0, value=0.6, step=0.05,
+                                     label="Fidélité à l'original (ControlNet Tile)")
                 prompt = gr.Textbox(
                     label="Prompt (optionnel — guide le détail)", lines=2,
                     placeholder="highly detailed, sharp focus, intricate details")
@@ -39,19 +55,16 @@ def build_creative_tab(tab_id="creative"):
                 logbox = gr.Textbox(label="Journal", lines=12, autoscroll=True,
                                     elem_classes="log-box")
 
-        def do_creative(image, scale, creativity, prompt, progress=gr.Progress()):
+        def do_creative(image, scale, creativity, cn_scale, prompt,
+                        progress=gr.Progress()):
             if image is None:
                 raise gr.Error("Fournissez une image.")
-            m = registry.get_base_model(REFINER_ID, settings.load_prefs())
-            if m is None or not registry.model_is_ready(m):
-                raise gr.Error("Flux.2 Klein n'est pas téléchargé "
-                               "(onglet Bibliothèque).")
             logs: list[str] = []
             progress(0.05, desc="Upscale créatif…")
             try:
-                out = gen_engine.creative_upscale(
-                    model_id=REFINER_ID, image=image, scale=int(scale),
-                    prompt=prompt or "", creativity=float(creativity),
+                out = tools.creative_upscale(
+                    image, scale=int(scale), prompt=prompt or "",
+                    creativity=float(creativity), cn_scale=float(cn_scale),
                     log=logs.append)
             except Exception as exc:  # noqa: BLE001
                 logs.append(f"\n[ERREUR] {exc}")
@@ -59,7 +72,7 @@ def build_creative_tab(tab_id="creative"):
             progress(1.0, desc="Terminé")
             return str(out), "\n".join(logs)
 
-        run.click(do_creative, inputs=[image, scale, creativity, prompt],
+        run.click(do_creative, inputs=[image, scale, creativity, cn_scale, prompt],
                   outputs=[result, logbox])
 
     return image

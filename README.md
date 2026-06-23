@@ -78,9 +78,12 @@ sélectionnez-les (jusqu'à 2) avec leur poids dans l'onglet Génération. La sy
 `<lora:nom:poids>` est transmise au moteur.
 
 ### Upscale créatif (onglet ✨) — façon Magnific / Topaz Wonder
-Pré-agrandit l'image puis **ré-invente le détail** en img2img **par tuiles** via
-Flux.2 Klein. Curseur de *créativité*, prompt optionnel. ×2 = 4 tuiles,
-×4 = 16 tuiles, ×8 = très long.
+**SDXL + ControlNet Tile** (diffusers, installable en 1 clic, ~9 Go) : pré-agrandit
+l'image puis **ré-invente le détail par tuiles**, chaque tuile étant **ancrée**
+sur l'image agrandie par le ControlNet Tile → tuiles cohérentes, **fondu sans
+couture**. Curseurs *créativité* et *fidélité (ControlNet)*, prompt optionnel.
+Offload CPU activé → tient sur 11–12 Go (robuste mais lent). ×2 = 4 tuiles,
+×4 = 16, ×8 = très long.
 
 ### Toolkit (onglet 🧰)
 Outils PyTorch installables en 1 clic (modèles téléchargés depuis Hugging Face) :
@@ -150,16 +153,16 @@ atelier/
   styles.py                  # presets de prompt système / style
   engine/
     sdcpp.py                 # construction/exécution des commandes sd-cli (+ LoRA)
-    generate.py              # pipeline de génération + upscale créatif par tuiles
-    tools.py                 # Toolkit (profondeur, détourage) en sous-process
+    generate.py              # pipeline de génération (modèle + matériel + LoRA)
+    tools.py                 # outils PyTorch (profondeur, détourage, upscale) en sous-process
   ui/
     theme.py                 # thème clair moderne + CSS
     generate_tab.py · creative_tab.py · library_tab.py · toolkit_tab.py · settings_tab.py
 scripts/
   get_sdcpp.py               # télécharge le binaire stable-diffusion.cpp
   _torch_setup.py            # helpers d'installation PyTorch CUDA (partagés)
-  setup_tools.py             # installe les outils du Toolkit (depth, rembg)
-  tools/run_*.py             # runners d'inférence des outils (sous-process)
+  setup_tools.py             # installe les outils PyTorch (depth, rembg, upscale SDXL)
+  tools/run_*.py             # runners d'inférence (sous-process : depth, rembg, upscale)
 ```
 
 ---
