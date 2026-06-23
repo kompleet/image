@@ -195,7 +195,8 @@ def _feather_mask(h: int, w: int, fade: int):
     fy = np.ones(h, np.float32)
     fx = np.ones(w, np.float32)
     f = max(1, min(fade, h // 2, w // 2))
-    ramp = np.linspace(0.05, 1.0, f, dtype=np.float32)
+    # Fenêtre cosinus (Hann) : montée douce 0 -> 1, fondu sans couture visible.
+    ramp = 0.5 - 0.5 * np.cos(np.linspace(0.0, np.pi, f, dtype=np.float32))
     fy[:f] = ramp; fy[-f:] = ramp[::-1]
     fx[:f] = ramp; fx[-f:] = ramp[::-1]
     return (fy[:, None] * fx[None, :])[:, :, None]
@@ -208,8 +209,8 @@ def creative_upscale(
     prompt: str,
     creativity: float,
     log: Callable[[str], None] | None = None,
-    tile: int = 1280,
-    overlap: int = 160,
+    tile: int = 1024,
+    overlap: int = 320,
 ) -> Path:
     """Upscale « créatif » (façon Magnific) : pré-agrandissement Lanczos puis
     raffinage img2img à faible bruit qui ré-invente le détail.

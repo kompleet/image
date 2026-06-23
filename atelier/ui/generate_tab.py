@@ -317,6 +317,7 @@ def build_generative_tab(model_id: str, title: str,
 
             threading.Thread(target=worker, daemon=True).start()
             logs: list[str] = []
+            last_mtime = None
             progress(0.02, desc="Chargement du modèle…")
             while True:
                 try:
@@ -325,26 +326,34 @@ def build_generative_tab(model_id: str, title: str,
                     line = ""
                 if line is None:
                     break
+                changed = False
                 if line:
                     logs.append(line)
+                    changed = True
                     mt = step_re.search(line)
                     if mt:
                         cur = min(int(mt.group(1)), total)
                         progress(0.05 + 0.9 * cur / total,
                                  desc=f"étape {cur}/{total}")
-                # On lit l'aperçu en mémoire (copie PIL) plutôt que de passer le
-                # chemin à Gradio : sous Windows sd-cli écrit ce fichier en
-                # continu et Gradio ne peut pas l'ouvrir pendant l'écriture
-                # (PermissionError). Si verrouillé à cet instant, on saute la
-                # frame au lieu de planter.
+                # Aperçu : on lit le fichier en mémoire (copie PIL) plutôt que de
+                # passer le chemin à Gradio — sous Windows sd-cli écrit ce fichier
+                # en continu et Gradio ne peut pas l'ouvrir pendant l'écriture.
+                # On ne pousse une nouvelle image QUE si le fichier a changé
+                # (mtime), sinon Gradio re-rend la même image -> clignotement.
                 prev = gr.update()
                 if preview_path.exists():
                     try:
-                        from PIL import Image
-                        with Image.open(preview_path) as _pim:
-                            prev = _pim.copy()
+                        m = preview_path.stat().st_mtime
+                        if m != last_mtime:
+                            from PIL import Image
+                            with Image.open(preview_path) as _pim:
+                                prev = _pim.copy()
+                            last_mtime = m
+                            changed = True
                     except (OSError, ValueError):
-                        prev = gr.update()
+                        pass
+                if not changed:
+                    continue
                 yield gr.update(), prev, "\n".join(logs[-400:]), gr.update()
 
             if "err" in state:
