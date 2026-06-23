@@ -18,6 +18,7 @@ from .. import hardware, settings
 
 TOOLS_DIR = settings.ROOT / "tools_repo"
 DEPTH_MODEL_DIR = TOOLS_DIR / "depth" / "model"
+BG_MODEL_DIR = TOOLS_DIR / "bg" / "model"
 
 _IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -26,17 +27,24 @@ class ToolError(RuntimeError):
     pass
 
 
-def depth_is_installed() -> bool:
-    if not DEPTH_MODEL_DIR.is_dir():
+def _model_present(model_dir: Path) -> bool:
+    if not model_dir.is_dir():
         return False
-    return any(DEPTH_MODEL_DIR.rglob("*.safetensors")) \
-        or any(DEPTH_MODEL_DIR.rglob("*.bin"))
+    return any(model_dir.rglob("*.safetensors")) or any(model_dir.rglob("*.bin"))
 
 
-def install_depth_stream():
-    """Installe l'outil de profondeur en streamant le journal (pour l'UI)."""
+def depth_is_installed() -> bool:
+    return _model_present(DEPTH_MODEL_DIR)
+
+
+def bg_is_installed() -> bool:
+    return _model_present(BG_MODEL_DIR)
+
+
+def _install_stream(tool: str):
+    """Installe un outil (depth|bg) en streamant le journal (pour l'UI)."""
     setup = settings.ROOT / "scripts" / "setup_tools.py"
-    cmd = [sys.executable, str(setup), "depth"]
+    cmd = [sys.executable, str(setup), tool]
     buf: list[str] = [f"$ {' '.join(cmd)}", ""]
     yield "\n".join(buf)
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -53,6 +61,14 @@ def install_depth_stream():
     yield "\n".join(buf[-500:])
 
 
+def install_depth_stream():
+    yield from _install_stream("depth")
+
+
+def install_bg_stream():
+    yield from _install_stream("bg")
+
+
 def _gpu_index() -> int | None:
     prefs = settings.load_prefs()
     if prefs.get("gpu_index") is not None:
@@ -61,35 +77,21 @@ def _gpu_index() -> int | None:
     return prof.gpu.index if prof.gpu else None
 
 
-def depth_map(
-    image: Image.Image | str | Path,
-    log: Callable[[str], None] | None = None,
-) -> Path:
-    if not depth_is_installed():
-        raise ToolError("L'outil de profondeur n'est pas installé "
-                        "(bouton « Installer » du Toolkit).")
+def _to_src(image: Image.Image | str | Path, prefix: str) -> Path:
     settings.ensure_dirs()
     if isinstance(image, (str, Path)):
-        src = Path(image)
-    else:
-        src = settings.TMP_DIR / f"depth_src_{int(time.time()*1000)}.png"
-        image.save(src)
+        return Path(image)
+    src = settings.TMP_DIR / f"{prefix}_src_{int(time.time()*1000)}.png"
+    image.save(src)
+    return src
 
-    stamp = time.strftime("%Y%m%d-%H%M%S")
-    out_dir = settings.TMP_DIR / f"depth_out_{stamp}"
-    out_dir.mkdir(parents=True, exist_ok=True)
 
-    runner = settings.ROOT / "scripts" / "tools" / "run_depth.py"
-    cmd = [sys.executable, str(runner),
-           "--model-dir", str(DEPTH_MODEL_DIR),
-           "--input", str(src),
-           "--output-dir", str(out_dir)]
-
+def _run_tool(cmd: list[str], log: Callable[[str], None] | None,
+              err_msg: str) -> None:
     env = dict(os.environ)
     gi = _gpu_index()
     if gi is not None:
         env["CUDA_VISIBLE_DEVICES"] = str(gi)
-
     if log:
         log("$ " + " ".join(cmd))
     proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
@@ -100,13 +102,54 @@ def depth_map(
         if log:
             log(line.rstrip("\n"))
     if proc.wait() != 0:
-        raise ToolError("L'estimation de profondeur a échoué (voir le journal).")
+        raise ToolError(err_msg)
 
-    produced = sorted(p for p in out_dir.rglob("*")
-                      if p.suffix.lower() in _IMG_EXT)
+
+def _collect(out_dir: Path, final_prefix: str, stamp: str) -> Path:
+    produced = sorted(p for p in out_dir.rglob("*") if p.suffix.lower() in _IMG_EXT)
     if not produced:
-        raise ToolError("Aucune carte de profondeur produite.")
-
-    final = settings.OUTPUT_DIR / f"depth-{stamp}.png"
-    Image.open(produced[0]).save(final)
+        raise ToolError("Aucune image produite (voir le journal).")
+    final = settings.OUTPUT_DIR / f"{final_prefix}-{stamp}.png"
+    Image.open(produced[0]).save(final)  # conserve l'alpha (RGBA) si présent
     return final
+
+
+def _depth_runner(image, mode: str, strength: float,
+                  log: Callable[[str], None] | None) -> Path:
+    if not depth_is_installed():
+        raise ToolError("L'outil de profondeur n'est pas installé "
+                        "(bouton « Installer » du Toolkit).")
+    src = _to_src(image, mode)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = settings.TMP_DIR / f"{mode}_out_{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runner = settings.ROOT / "scripts" / "tools" / "run_depth.py"
+    cmd = [sys.executable, str(runner), "--model-dir", str(DEPTH_MODEL_DIR),
+           "--input", str(src), "--output-dir", str(out_dir),
+           "--mode", mode, "--strength", str(strength)]
+    _run_tool(cmd, log, f"L'estimation ({mode}) a échoué (voir le journal).")
+    return _collect(out_dir, mode, stamp)
+
+
+def depth_map(image, log: Callable[[str], None] | None = None) -> Path:
+    return _depth_runner(image, "depth", 2.0, log)
+
+
+def normal_map(image, strength: float = 2.0,
+               log: Callable[[str], None] | None = None) -> Path:
+    return _depth_runner(image, "normal", strength, log)
+
+
+def bg_remove(image, log: Callable[[str], None] | None = None) -> Path:
+    if not bg_is_installed():
+        raise ToolError("L'outil de suppression d'arrière-plan n'est pas installé "
+                        "(bouton « Installer » du Toolkit).")
+    src = _to_src(image, "nobg")
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = settings.TMP_DIR / f"nobg_out_{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runner = settings.ROOT / "scripts" / "tools" / "run_rembg.py"
+    cmd = [sys.executable, str(runner), "--model-dir", str(BG_MODEL_DIR),
+           "--input", str(src), "--output-dir", str(out_dir)]
+    _run_tool(cmd, log, "La suppression d'arrière-plan a échoué (voir le journal).")
+    return _collect(out_dir, "nobg", stamp)

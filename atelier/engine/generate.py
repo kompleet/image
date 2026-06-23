@@ -70,6 +70,33 @@ def _apply_loras(prompt: str, loras: list[tuple[str, float]]) -> str:
     return (prompt or "") + tags
 
 
+def _write_prompt_sidecars(paths: list[Path], req: "GenRequest",
+                           model: "registry.BaseModel", base_seed: int) -> None:
+    """Écrit un .txt (style A1111) à côté de chaque image, pour retrouver le
+    prompt et les réglages directement dans le dossier outputs/."""
+    import time
+    date = time.strftime("%Y-%m-%d %H:%M:%S")
+    for i, p in enumerate(paths):
+        seed = base_seed + i if (base_seed is not None and base_seed >= 0) \
+            else base_seed
+        lines = [req.prompt or ""]
+        if req.negative:
+            lines.append(f"Negative prompt: {req.negative}")
+        lines.append(f"Model: {model.name} ({model.id})")
+        lines.append(
+            f"Steps: {req.steps}, CFG: {req.cfg_scale}, Sampler: {req.sampler}, "
+            f"Scheduler: {req.schedule or 'auto'}, Size: {req.width}x{req.height}, "
+            f"Seed: {seed}, Flow shift: {req.flow_shift:g}")
+        if req.init_image:
+            lines.append(f"img2img strength: {req.strength}")
+        lines.append(f"Date: {date}")
+        try:
+            Path(p).with_suffix(".txt").write_text("\n".join(lines),
+                                                   encoding="utf-8")
+        except OSError:
+            pass
+
+
 def generate(
     model_id: str,
     prompt: str,
@@ -94,6 +121,7 @@ def generate(
     control_image: Path | None = None,
     control_strength: float = 0.8,
     canny: bool = False,
+    save_prompt: bool = True,
     log: Callable[[str], None] | None = None,
 ) -> list[Path]:
     prefs = settings.load_prefs()
@@ -162,7 +190,10 @@ def generate(
     out = sdcpp.unique_output(model.family)
     cmd = sdcpp.build_gen_cmd(sd_cli, req, out)
     sdcpp.run(cmd, log=log, gpu_index=gpu_index)
-    return sdcpp.collect_outputs(out, batch_count)
+    paths = sdcpp.collect_outputs(out, batch_count)
+    if save_prompt and paths:
+        _write_prompt_sidecars(paths, req, model, int(seed))
+    return paths
 
 
 def _feather_mask(h: int, w: int, fade: int):
@@ -218,7 +249,7 @@ def creative_upscale(
                   steps=int(d.get("steps", 8)), cfg_scale=float(d.get("cfg_scale", 1.0)),
                   sampler=d.get("sampler", "euler"),
                   schedule=d.get("scheduler", "auto"), seed=seed, batch_count=1,
-                  strength=float(creativity))
+                  strength=float(creativity), save_prompt=False)
 
     # Petite cible -> une seule passe (tient en VRAM).
     if max(tw, th) <= 1536:

@@ -2,7 +2,8 @@
 """Installe les outils du Toolkit (Python embarqué, aucune commande à taper).
 
 Outils :
-  depth  -> Depth Anything V2 (Small) : carte de profondeur depuis une image.
+  depth  -> Depth Anything V2 (Small) : profondeur + carte de normales.
+  bg     -> RMBG-1.4 : suppression d'arrière-plan (PNG transparent).
 
 Réutilise les helpers torch CUDA de setup_upscalers (build adaptée au GPU,
 sans verrouiller de DLL). Lançable depuis l'interface ou en ligne :
@@ -29,6 +30,8 @@ from setup_upscalers import ensure_torch_cuda, pin_numpy, sh  # noqa: E402
 
 # Modèle léger (~100 Mo) : rapide, tourne même sur Pascal (GTX 10xx) et en CPU.
 DEPTH_REPO = "depth-anything/Depth-Anything-V2-Small-hf"
+# RMBG-1.4 (~176 Mo) : code self-contained (pur torch), poids sur HF.
+BG_REPO = "briaai/RMBG-1.4"
 
 
 def install_depth():
@@ -40,16 +43,31 @@ def install_depth():
     from huggingface_hub import snapshot_download
     snapshot_download(repo_id=DEPTH_REPO, local_dir=str(model_dir))
     pin_numpy()  # transformers peut réintroduire NumPy 2 -> on re-fige
-    print("\n[OK] Depth Anything V2 installé. Disponible dans l'onglet Toolkit.")
+    print("\n[OK] Depth Anything V2 installé (profondeur + normales).")
+
+
+def install_bg():
+    model_dir = settings.ROOT / "tools_repo" / "bg" / "model"
+    ensure_torch_cuda()
+    print("Installation de transformers…")
+    sh([sys.executable, "-m", "pip", "install", "transformers>=4.45",
+        "scikit-image", "pillow"])
+    print(f"\nTéléchargement du modèle de suppression d'arrière-plan ({BG_REPO})…")
+    from huggingface_hub import snapshot_download
+    snapshot_download(repo_id=BG_REPO, local_dir=str(model_dir))
+    pin_numpy()
+    print("\n[OK] RMBG-1.4 installé. Disponible dans l'onglet Toolkit.")
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("tool", choices=["depth"])
+    ap.add_argument("tool", choices=["depth", "bg"])
     args = ap.parse_args()
     settings.configure_hf_env()
     if args.tool == "depth":
         install_depth()
+    elif args.tool == "bg":
+        install_bg()
 
 
 if __name__ == "__main__":
