@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Atelier — studio d'inférence d'images en local (Gradio).
+"""GEN.Ai Image Workshop — studio d'inférence d'images en local (Gradio).
 
-Onglets : Génération (Ideogram 4 / Z-Image Turbo, GGUF) · Bibliothèque ·
-Upscale (SeedVR2 / NVIDIA PiD) · Réglages.
+Onglets : Génération (Flux.2 Klein 9B, GGUF) · Bibliothèque · Upscale créatif ·
+Toolkit (profondeur, détourage) · Réglages.
 """
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ from atelier.ui.library_tab import build_library_tab
 from atelier.ui.settings_tab import build_settings_tab
 from atelier.ui.theme import CSS, theme
 from atelier.ui.toolkit_tab import build_toolkit_tab
-from atelier.ui.upscale_tab import build_upscale_tab
 
 # Force le thème clair quel que soit le réglage clair/sombre du navigateur/OS.
 _HEAD = (
@@ -62,7 +61,7 @@ def build_app() -> gr.Blocks:
                    head=_HEAD) as demo:
         gr.HTML(
             f"<div id='atelier-header'><h1>🎨 {APP_NAME}</h1>"
-            f"<div class='sub'>Génération d'images locale · SDXL · Flux.2 · "
+            f"<div class='sub'>Génération d'images locale · Flux.2 Klein 9B · "
             f"upscale créatif · v{__version__}</div></div>")
 
         if sd_cli is None:
@@ -77,29 +76,22 @@ def build_app() -> gr.Blocks:
         pending_upscale = gr.State(None)
 
         with gr.Tabs() as tabs:
-            build_generative_tab("sdxl-realvis", "📷 SDXL (RealVisXL)",
-                                 tabs=tabs, pending_upscale=pending_upscale)
             build_generative_tab("flux2-klein-9b", "🟣 Flux.2 Klein 9B",
                                  tabs=tabs, pending_upscale=pending_upscale)
-            build_generative_tab("chroma", "🎨 Chroma (non censuré)",
-                                 tabs=tabs, pending_upscale=pending_upscale)
-            build_generative_tab("qwen-image", "🈳 Qwen-Image",
-                                 tabs=tabs, pending_upscale=pending_upscale)
             build_library_tab()
-            upscale_input = build_upscale_tab(tab_id="upscale")
-            build_creative_tab()
+            creative_input = build_creative_tab(tab_id="creative")
             build_toolkit_tab()
             build_settings_tab()
 
         # Quand on arrive sur un onglet : si une image est en attente, la charger
-        # dans l'entrée de l'Upscale puis vider l'état.
+        # dans l'entrée de l'Upscale créatif puis vider l'état.
         def _consume_pending(p):
             if p:
                 return gr.update(value=p), None
             return gr.update(), p
 
         tabs.select(_consume_pending, inputs=[pending_upscale],
-                    outputs=[upscale_input, pending_upscale])
+                    outputs=[creative_input, pending_upscale])
 
     return demo
 

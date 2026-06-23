@@ -208,9 +208,9 @@ def auto_profile(gpu_index: int | None = None) -> Profile:
     if ram:
         notes.append(f"RAM {ram:.0f} Go -> encodeur de texte en {enc_quant} "
                      "(déchargé en RAM, sans coût VRAM).")
-    if vram < 8:
-        notes.append("VRAM serrée : préférez Z-Image Turbo et des résolutions "
-                     "≤ 768 px ; Ideogram 4 sera lent.")
+    if vram < 10:
+        notes.append("VRAM serrée : préférez des résolutions ≤ 768 px et une "
+                     "quantification plus basse (la génération sera plus lente).")
     return profile
 
 

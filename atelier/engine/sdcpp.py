@@ -42,9 +42,9 @@ def cancel_active() -> str:
 class GenRequest:
     diffusion_model: Path | None = None   # modèle de diffusion seul (GGUF flow)
     vae: Path | None = None
-    model_path: Path | None = None        # checkpoint complet (SDXL) -> -m
-    text_encoder: Path | None = None       # --llm (Qwen, Qwen-Image…)
-    t5xxl: Path | None = None              # --t5xxl (Chroma, Flux.1…)
+    model_path: Path | None = None        # checkpoint complet -> -m
+    text_encoder: Path | None = None       # --llm (Qwen3 pour Flux.2 Klein)
+    t5xxl: Path | None = None              # --t5xxl (encodeur T5, si applicable)
     clip_l: Path | None = None             # --clip_l
     uncond_model: Path | None = None
     extra_flags: list[str] = field(default_factory=list)
@@ -63,10 +63,6 @@ class GenRequest:
     strength: float = 0.6
     lora_dir: Path | None = None       # --lora-model-dir
     preview_path: Path | None = None   # aperçu temps réel (--preview proj)
-    control_net: Path | None = None    # modèle ControlNet
-    control_image: Path | None = None  # image de contrôle
-    control_strength: float = 0.8
-    canny: bool = False                # préprocesseur Canny intégré à sd.cpp
     flags: dict[str, bool] = field(default_factory=dict)
     gpu_index: int | None = None
 
@@ -96,7 +92,7 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
 
     cmd: list[str] = [str(sd_cli), "--mode", "img_gen"]
     if req.model_path:
-        # Checkpoint complet (SDXL) : CLIP + VAE inclus.
+        # Checkpoint complet : CLIP + VAE inclus.
         cmd += ["-m", str(req.model_path)]
         if req.vae:
             cmd += ["--vae", str(req.vae)]
@@ -131,12 +127,6 @@ def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:
         cmd += ["--flow-shift", f"{req.flow_shift}"]
     if req.init_image:
         cmd += ["-i", str(req.init_image), "--strength", f"{req.strength}"]
-    if req.control_net and req.control_image:
-        cmd += ["--control-net", str(req.control_net),
-                "--control-image", str(req.control_image),
-                "--control-strength", f"{req.control_strength}"]
-        if req.canny:
-            cmd += ["--canny"]
     if req.lora_dir:
         cmd += ["--lora-model-dir", str(req.lora_dir)]
 

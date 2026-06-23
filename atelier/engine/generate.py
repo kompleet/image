@@ -117,10 +117,6 @@ def generate(
     vae_override: Path | None = None,
     encoder_override: Path | None = None,
     preview_path: Path | None = None,
-    control_net: Path | None = None,
-    control_image: Path | None = None,
-    control_strength: float = 0.8,
-    canny: bool = False,
     save_prompt: bool = True,
     log: Callable[[str], None] | None = None,
 ) -> list[Path]:
@@ -135,7 +131,7 @@ def generate(
     if model is None:
         raise sdcpp.EngineError(f"Modèle inconnu : {model_id}")
 
-    # Famille « checkpoint complet » (SDXL) : un seul fichier via -m.
+    # Famille « checkpoint complet » : un seul fichier via -m.
     has_full = any(c.role == "model" for c in model.components)
     if has_full:
         model_path = Path(diffusion_override) if diffusion_override \
@@ -183,8 +179,6 @@ def generate(
         width=width, height=height, seed=seed, batch_count=batch_count,
         init_image=init_image, strength=strength,
         lora_dir=lora_dir, preview_path=preview_path,
-        control_net=control_net, control_image=control_image,
-        control_strength=float(control_strength), canny=canny,
         flags=flags, gpu_index=gpu_index,
     )
     out = sdcpp.unique_output(model.family)

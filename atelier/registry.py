@@ -17,7 +17,7 @@ from . import hardware, quant, settings
 class Component:
     role: str            # diffusion | uncond | vae | text_encoder
     repo: str
-    template: str        # ex "ideogram4-{quant}.gguf" ou "vae/*.safetensors"
+    template: str        # ex "*-{quant}.gguf" ou "vae/*.safetensors"
     quant: str | None    # quant résolu si le motif contient un token, sinon None
 
     @property
@@ -45,28 +45,13 @@ class Component:
 class BaseModel:
     id: str
     name: str
-    family: str          # ideogram | zimage
+    family: str
     tags: list[str]
     description: str
     components: list[Component]
     defaults: dict[str, Any]
     vram_min_gb: float
     presets: list[dict] = None  # type: ignore[assignment]
-
-
-@dataclass
-class Upscaler:
-    id: str
-    name: str
-    engine: str
-    tags: list[str]
-    description: str
-    weights_repo: str
-    code_repo: str
-    vram_min_gb: float
-    pip_package: str = ""
-    model_url: str = ""
-    model_file: str = ""
 
 
 def _catalog() -> dict[str, Any]:
@@ -105,48 +90,6 @@ def load_base_models(prefs: dict[str, Any]) -> list[BaseModel]:
             presets=m.get("presets", []),
         ))
     return out
-
-
-def load_upscalers() -> list[Upscaler]:
-    out: list[Upscaler] = []
-    for u in _catalog().get("upscalers", []):
-        out.append(Upscaler(
-            id=u["id"], name=u["name"], engine=u.get("engine", "pytorch"),
-            tags=u.get("tags", []), description=(u.get("description") or "").strip(),
-            weights_repo=u.get("weights_repo", ""), code_repo=u.get("code_repo", ""),
-            vram_min_gb=float(u.get("vram_min_gb", 0)),
-            pip_package=u.get("pip_package", ""),
-            model_url=u.get("model_url", ""),
-            model_file=u.get("model_file", ""),
-        ))
-    return out
-
-
-@dataclass
-class ControlNet:
-    id: str
-    name: str
-    family: str
-    repo: str
-    match: str
-    canny: bool
-
-
-def load_controlnets() -> list[ControlNet]:
-    out = []
-    for c in _catalog().get("controlnets", []):
-        out.append(ControlNet(id=c["id"], name=c["name"], family=c["family"],
-                              repo=c["repo"], match=c["match"],
-                              canny=bool(c.get("canny"))))
-    return out
-
-
-def controlnets_for(family: str) -> list[ControlNet]:
-    return [c for c in load_controlnets() if c.family == family]
-
-
-def controlnet_component(cn: ControlNet) -> Component:
-    return Component("controlnet", cn.repo, cn.match, None)
 
 
 def get_base_model(model_id: str, prefs: dict[str, Any]) -> BaseModel | None:
@@ -217,7 +160,5 @@ def recommend(prefs: dict[str, Any]) -> dict[str, list[str]]:
             labels.append("✅ adapté à votre carte")
         elif vram:
             labels.append(f"⚠️ {m.vram_min_gb:.0f} Go conseillés (vous : {vram:.0f})")
-        if m.family == "zimage" and (not vram or vram < 12):
-            labels.append("👍 recommandé pour démarrer (rapide)")
         out[m.id] = labels
     return out

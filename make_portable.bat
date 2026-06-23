@@ -20,7 +20,7 @@ mkdir "%STAGE%\%NAME%"
 
 REM Copie tout sauf les dossiers volumineux/volatils.
 robocopy "%~dp0." "%STAGE%\%NAME%" /E ^
-  /XD models outputs tmp userdata upscalers_repo .git __pycache__ dist ^
+  /XD models outputs tmp userdata tools_repo .git __pycache__ dist ^
   /XF *.log "%NAME%.zip" >nul
 
 echo Compression (cela peut prendre une minute)...

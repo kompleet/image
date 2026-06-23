@@ -1,19 +1,19 @@
 # 🟢 GEN.Ai Image Workshop
 
 Studio d'inférence d'images **local**, moderne et léger, pensé pour les artistes.
-Génère avec **SDXL (photoréalisme)** et **Flux.2 Klein** (GGUF), avec
-**bibliothèque de modèles à la demande**, **optimisations automatiques selon
-votre carte RTX et votre RAM**, **LoRA**, **presets sampler/scheduler**, et
-**upscale** (classique DRCT + créatif façon Magnific).
+Génère avec **Flux.2 Klein 9B** (GGUF), avec **bibliothèque de modèles à la
+demande**, **optimisations automatiques selon votre carte RTX et votre RAM**,
+**LoRA**, **presets sampler/scheduler**, **styles enregistrés**, **upscale
+créatif façon Magnific** et un **Toolkit** (profondeur, détourage).
 
 Aucun ComfyUI, aucune usine à gaz : une interface web claire.
 
 | Onglet | Rôle |
 |---|---|
-| 📷 **SDXL** / 🟣 **Flux.2 Klein** | text-to-image & image-to-image, presets, LoRA, modèle perso |
+| 🟣 **Flux.2 Klein** | text-to-image & image-to-image, presets, styles, LoRA, modèle perso |
 | 📚 **Bibliothèque** | catalogue, recommandations selon le matériel, téléchargement à la demande |
-| 🔍 **Upscale** | agrandissement classique (DRCT, via spandrel) |
-| ✨ **Upscale créatif** | façon Magnific : ré-invente le détail (SDXL/Flux par tuiles) |
+| ✨ **Upscale créatif** | façon Magnific : ré-invente le détail (Flux par tuiles) |
+| 🧰 **Toolkit** | carte de profondeur · suppression d'arrière-plan (PNG transparent) |
 | ⚙️ **Réglages** | matériel détecté, quantification, optimisations (auto/manuel) |
 
 ---
@@ -42,12 +42,17 @@ run.bat          ::  lance l'interface sur http://127.0.0.1:7860
 
 ### Moteur
 La génération passe par **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**
-(natif CUDA, format GGUF) — pas de PyTorch lourd pour la génération. Les modèles
-viennent de :
-- SDXL photoréaliste — [`SG161222/RealVisXL_V5.0`](https://huggingface.co/SG161222/RealVisXL_V5.0)
-  (checkpoint complet, remplaçable par Juggernaut ou un autre SDXL)
-- Flux.2 Klein 9B — [`unsloth/FLUX.2-klein-9B-GGUF`](https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF)
-  + encodeur [`unsloth/Qwen3-8B-GGUF`](https://huggingface.co/unsloth/Qwen3-8B-GGUF)
+(natif CUDA, format GGUF) — pas de PyTorch lourd pour la génération. Flux.2 Klein
+9B se compose de :
+- diffusion — [`unsloth/FLUX.2-klein-9B-GGUF`](https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF) (distillée, 4 pas)
+- VAE flux2 — [`Comfy-Org/flux2-klein-9B`](https://huggingface.co/Comfy-Org/flux2-klein-9B) (ungated)
+- encodeur de texte — [`bartowski/mlabonne_Qwen3-8B-abliterated-GGUF`](https://huggingface.co/bartowski/mlabonne_Qwen3-8B-abliterated-GGUF)
+  (Qwen3-8B **abliteré / non censuré**, via `--llm`, déchargé en RAM)
+
+> L'encodeur abliteré réduit les refus de prompt. C'est **expérimental** (Flux.2
+> a été entraîné avec l'encodeur standard) : pour revenir à un encodeur classique,
+> déposez un `Qwen3-8B` GGUF dans `models/custom/` et choisissez-le comme
+> *Encodeur (local)* dans l'onglet Génération.
 
 ### Optimisation automatique
 L'application détecte votre GPU (via `nvidia-smi`) et votre RAM, puis choisit seul :
@@ -62,26 +67,31 @@ L'application détecte votre GPU (via `nvidia-smi`) et votre RAM, puis choisit s
 Multi-GPU : la plus grosse carte est utilisée par défaut, modifiable dans
 **Réglages**. Tout est surchargeable manuellement (mode auto décochable).
 
-### Réglages auto par modèle
-Chaque onglet ouvre sur les bons réglages, et un menu **Préréglage** propose des
-combos éprouvés. Ex. SDXL → 30 pas / CFG 5 / **DPM++ 2M + Karras** ; Flux.2 Klein
-→ 4 pas / CFG 1.0 / **euler + simple**.
+### Presets & styles
+Un menu **Préréglage** propose des combos éprouvés (Flux.2 Klein → 4 pas /
+CFG 1.0 / **euler + simple**). L'accordéon **Prompt système / style** permet
+d'enregistrer des préfixes de style réutilisables (persistés dans `userdata/`).
 
 ### LoRA
 Déposez vos `.safetensors` / `.gguf` dans le dossier **`loras/`**, puis
 sélectionnez-les (jusqu'à 2) avec leur poids dans l'onglet Génération. La syntaxe
 `<lora:nom:poids>` est transmise au moteur.
 
-### Upscale classique (onglet 🔍)
-Modèles SR « classiques » chargés par **spandrel** (PyTorch). **Aucune commande
-à taper** : onglet **Upscale → « Installer un moteur d'upscale »**.
-- **4x DRCT-L** — transformer dense ×4, net et polyvalent.
-- **4x Nomos2 HQ DRCT-L** — DRCT finetuné photos HQ (Phhofm).
-
 ### Upscale créatif (onglet ✨) — façon Magnific / Topaz Wonder
 Pré-agrandit l'image puis **ré-invente le détail** en img2img **par tuiles** via
-un modèle de diffusion (**SDXL** recommandé, ou Flux.2). Curseur de *créativité*,
-prompt optionnel. ×2 = 4 tuiles, ×4 = 16 tuiles (plus long).
+Flux.2 Klein. Curseur de *créativité*, prompt optionnel. ×2 = 4 tuiles,
+×4 = 16 tuiles, ×8 = très long.
+
+### Toolkit (onglet 🧰)
+Outils PyTorch installables en 1 clic (modèles téléchargés depuis Hugging Face) :
+- **Profondeur** — *Depth Anything V2* (carte de profondeur).
+- **Sans arrière-plan** — *RMBG-1.4* (détourage → PNG transparent ; licence non
+  commerciale).
+
+### Prompts sauvegardés
+Chaque image générée est accompagnée d'un `.txt` (style A1111) dans `outputs/`
+avec le prompt, le négatif, le modèle, le sampler/scheduler, le seed et les
+dimensions.
 
 ---
 
@@ -130,24 +140,26 @@ déjà inclus dans le ZIP.
 ## Architecture
 
 ```
-app.py                       # entrée Gradio (4 onglets)
+app.py                       # entrée Gradio
 config/models.yaml           # bibliothèque : sources, défauts, reco (source de vérité)
 atelier/
   settings.py                # chemins + préférences persistées (userdata/)
   hardware.py                # détection GPU/RAM + profils d'optimisation
   registry.py                # catalogue, résolution des fichiers, statut, reco
   downloader.py              # téléchargement HF à la demande
+  styles.py                  # presets de prompt système / style
   engine/
     sdcpp.py                 # construction/exécution des commandes sd-cli (+ LoRA)
-    generate.py              # pipeline de génération (modèle + matériel + LoRA)
-    upscalers.py             # upscale classique (DRCT via spandrel)
+    generate.py              # pipeline de génération + upscale créatif par tuiles
+    tools.py                 # Toolkit (profondeur, détourage) en sous-process
   ui/
     theme.py                 # thème clair moderne + CSS
-    generate_tab.py · creative_tab.py · library_tab.py · upscale_tab.py · settings_tab.py
+    generate_tab.py · creative_tab.py · library_tab.py · toolkit_tab.py · settings_tab.py
 scripts/
   get_sdcpp.py               # télécharge le binaire stable-diffusion.cpp
-  setup_upscalers.py         # installe les upscalers (spandrel/DRCT)
-  upscalers/run_*.py         # runners d'inférence des upscalers
+  _torch_setup.py            # helpers d'installation PyTorch CUDA (partagés)
+  setup_tools.py             # installe les outils du Toolkit (depth, rembg)
+  tools/run_*.py             # runners d'inférence des outils (sous-process)
 ```
 
 ---
@@ -163,5 +175,4 @@ scripts/
 - **Modèle « à télécharger »** → onglet Bibliothèque → bouton Télécharger.
 - **Out of memory** → Réglages : baissez la quantification, activez offload/tiling,
   ou réduisez la résolution / le facteur d'upscale créatif.
-- **Upscale créatif en OOM** → baissez le facteur (×2) ou utilisez SDXL
-  (plus léger que Flux.2 pour le raffinage).
+- **Upscale créatif en OOM** → baissez le facteur (×2) ou la résolution source.

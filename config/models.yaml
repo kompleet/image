@@ -1,5 +1,5 @@
 # ============================================================================
-#  Atelier — Bibliothèque de modèles
+#  GEN.Ai Image Workshop — Bibliothèque de modèles
 # ----------------------------------------------------------------------------
 #  Source unique de vérité : téléchargement à la demande, recommandations selon
 #  le matériel, et réglages automatiques par modèle (steps/cfg/sampler/...).
@@ -13,55 +13,31 @@
 base_models:
 
   # --------------------------------------------------------------------------
-  - id: sdxl-realvis
-    name: "SDXL — RealVisXL V5.0"
-    family: sdxl
-    tags: [photoréalisme, polyvalent, controlnet]
-    description: >
-      SDXL photoréaliste haut de gamme (RealVisXL V5.0). Checkpoint complet
-      unique (CLIP + VAE inclus), ~6,5 Go — tient en VRAM dès 8 Go, pas
-      d'encodeur séparé. Modèle « eps » classique : DPM++ 2M + Karras.
-    sources:
-      # Checkpoint SDXL complet (un seul fichier via -m). Remplaçable par un
-      # autre SDXL (Juggernaut, etc.) dans models/custom/ ou ici.
-      model:
-        repo: SG161222/RealVisXL_V5.0
-        match: "RealVisXL_V5.0_fp16.safetensors"
-    defaults:
-      steps: 30
-      cfg_scale: 5.0
-      sampler: dpm++2m
-      scheduler: karras
-      width: 1024
-      height: 1024
-      supports_negative: true
-    presets:
-      - {name: "📷 Photoréaliste (recommandé)", sampler: dpm++2m, scheduler: karras, steps: 30, cfg_scale: 5.0}
-      - {name: "Net (dpm++ 2M)",                sampler: dpm++2m, scheduler: karras, steps: 25, cfg_scale: 6.0}
-      - {name: "Rapide (euler a)",              sampler: euler_a, scheduler: karras, steps: 22, cfg_scale: 6.0}
-    vram_min_gb: 8
-
-  # --------------------------------------------------------------------------
   - id: flux2-klein-9b
     name: "Flux.2 Klein 9B"
     family: flux2
-    tags: [qualité, rapide, distillé]
+    tags: [qualité, rapide, distillé, non-censuré]
     description: >
-      FLUX.2 Klein 9B en GGUF (distillé, rapide : 4 pas, CFG 1.0). Très haute
-      qualité d'image. Diffusion Q4 ≈ 5 Go en VRAM ; encodeur Qwen3-8B déchargé
-      en RAM. Tourne sur 10–12 Go de VRAM.
+      FLUX.2 Klein 9B en GGUF (distillé, rapide : 4 pas, CFG 1.0), très haute
+      qualité d'image. Diffusion Q4 ≈ 5 Go en VRAM ; encodeur Qwen3-8B
+      ABLITERÉ (non censuré) déchargé en RAM ; VAE flux2. Tourne dès 10–12 Go
+      de VRAM. L'encodeur abliteré réduit les refus de prompt (expérimental :
+      remplaçable par un encodeur standard via « Fichiers locaux »).
     sources:
+      # Diffusion GGUF distillée (fichiers flux-2-klein-9b-<quant>.gguf).
       diffusion:
         repo: unsloth/FLUX.2-klein-9B-GGUF
-        match: "*klein-9B*{quant}.gguf"
+        match: "flux-2-klein-9b-{quant}.gguf"
         quantizable: true
+      # VAE flux2 (différente de FLUX.1). Miroir Comfy-Org ungated.
       vae:
-        # Autoencodeur flux2_ae (dépôt HF qui l'héberge).
-        repo: Comfy-Org/Ideogram-4
-        match: "vae/*.safetensors"
+        repo: Comfy-Org/flux2-klein-9B
+        match: "split_files/vae/flux2-vae.safetensors"
+      # Encodeur de texte Qwen3-8B ABLITERÉ (non censuré), via --llm. Même
+      # architecture que le Qwen3-8B standard -> se charge tel quel.
       text_encoder:
-        repo: unsloth/Qwen3-8B-GGUF
-        match: "Qwen3-8B-{enc_quant}.gguf"
+        repo: bartowski/mlabonne_Qwen3-8B-abliterated-GGUF
+        match: "*Qwen3-8B-abliterated*{enc_quant}*.gguf"
         quantizable: true
     defaults:
       steps: 4
@@ -76,116 +52,3 @@ base_models:
       - {name: "Équilibré (res ms)",     sampler: res_multistep, scheduler: simple, steps: 6,  cfg_scale: 1.0}
       - {name: "Qualité (dpm++ 2M)",     sampler: dpm++2m,       scheduler: simple, steps: 10, cfg_scale: 1.0}
     vram_min_gb: 10
-
-  # --------------------------------------------------------------------------
-  - id: chroma
-    name: "Chroma (non censuré)"
-    family: chroma
-    tags: [non-censuré, flux, artistique]
-    description: >
-      Chroma — modèle basé sur FLUX.1 schnell, entièrement RÉ-ENTRAÎNÉ et
-      NON CENSURÉ (par lodestones). Très polyvalent et artistique. Diffusion GGUF
-      + encodeur T5-XXL (déchargé en RAM) + VAE FLUX.1.
-    sources:
-      # silveroxides/Chroma-GGUF ne contient QUE les GGUF de diffusion.
-      # On pointe sur Chroma1-HD (version finale). Quants dispo : Q4_0/Q8_0/BF16.
-      diffusion:
-        repo: silveroxides/Chroma-GGUF
-        match: "Chroma1-HD/Chroma1-HD-Q4_0.gguf"
-      t5xxl:
-        repo: city96/t5-v1_1-xxl-encoder-gguf
-        match: "t5-v1_1-xxl-encoder-{enc_quant}.gguf"
-        quantizable: true
-      vae:
-        # VAE de FLUX.1 (ae.safetensors). Miroir UNGATED (FLUX.1-schnell est gated).
-        repo: camenduru/FLUX.1-dev-ungated
-        match: "ae.safetensors"
-    defaults:
-      steps: 26
-      cfg_scale: 4.0
-      sampler: euler
-      scheduler: simple
-      width: 1024
-      height: 1024
-      supports_negative: true
-      extra_flags: ["--chroma-disable-dit-mask"]
-    presets:
-      - {name: "⚡ Recommandé", sampler: euler,   scheduler: simple, steps: 26, cfg_scale: 4.0}
-      - {name: "Détail (dpm++ 2M)", sampler: dpm++2m, scheduler: simple, steps: 30, cfg_scale: 4.5}
-    vram_min_gb: 10
-
-  # --------------------------------------------------------------------------
-  - id: qwen-image
-    name: "Qwen-Image"
-    family: qwen-image
-    tags: [qualité, texte, gros modèle]
-    description: >
-      Qwen-Image (MMDiT 20B) : excellent en texte dans l'image et composition.
-      Lourd : diffusion GGUF + encodeur Qwen2.5-VL (déchargé en RAM) + VAE.
-      Conseillé 12 Go+ (plus lent).
-    sources:
-      diffusion:
-        repo: city96/Qwen-Image-gguf
-        match: "qwen-image-{quant}.gguf"
-        quantizable: true
-      vae:
-        repo: Comfy-Org/Qwen-Image_ComfyUI
-        match: "split_files/vae/*.safetensors"
-      text_encoder:
-        # Encodeur Qwen2.5-VL. Pour une version NON CENSURÉE, déposez un GGUF
-        # « abliterated » dans models/custom/ et choisissez-le comme Encodeur local.
-        repo: unsloth/Qwen2.5-VL-7B-Instruct-GGUF
-        match: "Qwen2.5-VL-7B-Instruct-{enc_quant}.gguf"
-        quantizable: true
-    defaults:
-      steps: 20
-      cfg_scale: 2.5
-      sampler: euler
-      scheduler: simple
-      width: 1024
-      height: 1024
-      supports_negative: true
-    presets:
-      - {name: "⚡ Recommandé",     sampler: euler,   scheduler: simple, steps: 20, cfg_scale: 2.5}
-      - {name: "Détail (dpm++ 2M)", sampler: dpm++2m, scheduler: simple, steps: 28, cfg_scale: 3.0}
-    vram_min_gb: 12
-
-# ============================================================================
-#  Upscalers (PyTorch, installés à la demande via scripts/setup_upscalers.py)
-# ============================================================================
-upscalers:
-
-  - id: drct-l
-    name: "4x DRCT-L"
-    engine: spandrel
-    tags: [classique, transformer, ×4, net]
-    description: >
-      DRCT-L ×4 (transformer dense). Upscaler « classique » net et polyvalent,
-      chargé via spandrel. PyTorch, pas de flash-attn.
-    pip_package: spandrel
-    model_url: "https://drive.google.com/uc?id=1bVxvA6QFbne2se0CQJ-jyHFy94UOi3h5"
-    model_file: "4x-DRCT-L_X4.pth"
-    vram_min_gb: 8
-
-  - id: nomos2-drct-l
-    name: "4x Nomos2 HQ DRCT-L"
-    engine: spandrel
-    tags: [classique, transformer, ×4, photo]
-    description: >
-      DRCT-L finetuné sur Nomos2 (photos haute qualité), par Phhofm. Chargé via
-      spandrel. PyTorch, pas de flash-attn.
-    pip_package: spandrel
-    model_url: "https://github.com/Phhofm/models/releases/download/4xNomos2_hq_drct-l/4xNomos2_hq_drct-l.safetensors"
-    model_file: "4xNomos2_hq_drct-l.safetensors"
-    vram_min_gb: 8
-
-# ============================================================================
-#  ControlNet (par famille de modèle) — expérimental
-# ============================================================================
-controlnets:
-  - id: sdxl-canny
-    name: "SDXL Canny"
-    family: sdxl
-    repo: xinsir/controlnet-canny-sdxl-1.0
-    match: "diffusion_pytorch_model.safetensors"
-    canny: true

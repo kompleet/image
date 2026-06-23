@@ -17,7 +17,6 @@ BIN_DIR = ROOT / "bin"
 OUTPUT_DIR = ROOT / "outputs"
 TMP_DIR = ROOT / "tmp"
 USERDATA_DIR = ROOT / "userdata"
-UPSCALERS_REPO_DIR = ROOT / "upscalers_repo"
 
 CONFIG_DIR = ROOT / "config"
 PREFS_FILE = USERDATA_DIR / "preferences.json"

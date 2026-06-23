@@ -1,5 +1,5 @@
 """Onglet Bibliothèque : catalogue des modèles, recommandations selon le
-matériel, téléchargement à la demande, et upscalers."""
+matériel, téléchargement à la demande."""
 from __future__ import annotations
 
 import gradio as gr
@@ -62,11 +62,6 @@ def build_library_tab():
 
         refresh.click(refresh_cards, outputs=cards)
 
-        gr.Markdown("---\n### Upscalers (installation séparée, PyTorch)")
-        for u in registry.load_upscalers():
-            tags = " ".join(f"<span class='tag'>{t}</span>" for t in u.tags)
-            gr.Markdown(
-                f"<div class='model-card'><h3>{u.name}</h3>{tags}"
-                f"<p>{u.description}</p>"
-                f"<small>Installer : <code>python scripts/setup_upscalers.py "
-                f"{u.id}</code> · poids : <code>{u.weights_repo}</code></small></div>")
+        gr.Markdown(
+            "---\n*Upscale créatif (par tuiles) et outils (profondeur, "
+            "détourage) sont dans leurs onglets dédiés.*")

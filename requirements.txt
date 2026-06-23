@@ -14,8 +14,8 @@ Pillow>=10.2
 requests>=2.31
 
 # ---------------------------------------------------------------------------
-# PyTorch n'est PAS listé ici : la génération (Ideogram 4 / Z-Image) passe par
+# PyTorch n'est PAS listé ici : la génération (Flux.2 Klein) passe par
 # stable-diffusion.cpp (binaire natif, GGUF). PyTorch n'est nécessaire que pour
-# les upscalers SeedVR2 / NVIDIA PiD, installés à la demande par
-# `scripts/setup_upscalers.py` avec la bonne build CUDA.
+# les outils du Toolkit (profondeur, détourage), installés à la demande par
+# `scripts/setup_tools.py` avec la bonne build CUDA.
 # ---------------------------------------------------------------------------

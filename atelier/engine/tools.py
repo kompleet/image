@@ -1,7 +1,8 @@
 """Outils du Toolkit (PyTorch, installés à la demande).
 
 depth : carte de profondeur via Depth Anything V2 (transformers). Installation
-et exécution en sous-process (Python embarqué), comme les upscalers.
+et exécution en sous-process (Python embarqué), pour ne pas verrouiller les
+DLL de torch dans le process Gradio.
 """
 from __future__ import annotations
 
@@ -114,30 +115,19 @@ def _collect(out_dir: Path, final_prefix: str, stamp: str) -> Path:
     return final
 
 
-def _depth_runner(image, mode: str, strength: float,
-                  log: Callable[[str], None] | None) -> Path:
+def depth_map(image, log: Callable[[str], None] | None = None) -> Path:
     if not depth_is_installed():
         raise ToolError("L'outil de profondeur n'est pas installé "
                         "(bouton « Installer » du Toolkit).")
-    src = _to_src(image, mode)
+    src = _to_src(image, "depth")
     stamp = time.strftime("%Y%m%d-%H%M%S")
-    out_dir = settings.TMP_DIR / f"{mode}_out_{stamp}"
+    out_dir = settings.TMP_DIR / f"depth_out_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     runner = settings.ROOT / "scripts" / "tools" / "run_depth.py"
     cmd = [sys.executable, str(runner), "--model-dir", str(DEPTH_MODEL_DIR),
-           "--input", str(src), "--output-dir", str(out_dir),
-           "--mode", mode, "--strength", str(strength)]
-    _run_tool(cmd, log, f"L'estimation ({mode}) a échoué (voir le journal).")
-    return _collect(out_dir, mode, stamp)
-
-
-def depth_map(image, log: Callable[[str], None] | None = None) -> Path:
-    return _depth_runner(image, "depth", 2.0, log)
-
-
-def normal_map(image, strength: float = 2.0,
-               log: Callable[[str], None] | None = None) -> Path:
-    return _depth_runner(image, "normal", strength, log)
+           "--input", str(src), "--output-dir", str(out_dir)]
+    _run_tool(cmd, log, "L'estimation de profondeur a échoué (voir le journal).")
+    return _collect(out_dir, "depth", stamp)
 
 
 def bg_remove(image, log: Callable[[str], None] | None = None) -> Path:

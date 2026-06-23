@@ -1,5 +1,5 @@
 """Onglet Upscale créatif (façon Magnific) : pré-agrandissement + raffinage
-img2img via un modèle de diffusion. Réutilise le moteur de génération.
+img2img par tuiles via Flux.2 Klein. Réutilise le moteur de génération.
 """
 from __future__ import annotations
 
@@ -8,35 +8,23 @@ import gradio as gr
 from .. import registry, settings
 from ..engine import generate as gen_engine
 
-
-def _model_choices() -> list[tuple[str, str]]:
-    prefs = settings.load_prefs()
-    out = []
-    for m in registry.load_base_models(prefs):
-        ready = registry.model_is_ready(m)
-        out.append((f"{m.name} {'●' if ready else '○ (à télécharger)'}", m.id))
-    return out
+REFINER_ID = "flux2-klein-9b"
 
 
-def build_creative_tab():
-    choices = _model_choices()
-    # SDXL par défaut (le raffineur « classique » de Magnific/Ultimate SD Upscale).
-    default = next((v for _, v in choices if v == "sdxl-realvis"),
-                   choices[0][1] if choices else None)
-
-    with gr.Tab("✨ Upscale créatif"):
+def build_creative_tab(tab_id="creative"):
+    """Construit l'onglet Upscale créatif. Renvoie le composant Image d'entrée
+    (pour que les onglets de génération puissent y envoyer une image)."""
+    with gr.Tab("✨ Upscale créatif", id=tab_id):
         gr.Markdown(
             "### Upscale créatif (façon Magnific / Topaz Wonder)\n"
-            "Pré-agrandit l'image, puis **ré-invente le détail** via un modèle de "
-            "diffusion (img2img **par tuiles**, recollées avec fondu). Le curseur "
+            "Pré-agrandit l'image, puis **ré-invente le détail** via **Flux.2 "
+            "Klein** (img2img **par tuiles**, recollées avec fondu). Le curseur "
             "*Créativité* dose le détail ajouté.\n\n"
             "> ⚠️ Le modèle se recharge à chaque tuile : **×2 = 4 tuiles** (rapide), "
-            "**×4 = 16 tuiles** (long). **Z-Image Turbo** est le plus rapide pour ça.")
+            "**×4 = 16 tuiles** (long), **×8 = très long**.")
         with gr.Row():
             with gr.Column(scale=3):
                 image = gr.Image(label="Image à agrandir", type="pil", height=380)
-                model = gr.Dropdown(choices=choices, value=default,
-                                    label="Modèle de raffinage")
                 scale = gr.Radio([2, 4, 8], value=2,
                                  label="Facteur (×8 = très long, beaucoup de tuiles)")
                 creativity = gr.Slider(0.1, 0.6, value=0.3, step=0.05,
@@ -51,20 +39,18 @@ def build_creative_tab():
                 logbox = gr.Textbox(label="Journal", lines=12, autoscroll=True,
                                     elem_classes="log-box")
 
-        def do_creative(image, model_id, scale, creativity, prompt,
-                        progress=gr.Progress()):
+        def do_creative(image, scale, creativity, prompt, progress=gr.Progress()):
             if image is None:
                 raise gr.Error("Fournissez une image.")
-            if not model_id:
-                raise gr.Error("Choisissez un modèle de raffinage.")
-            m = registry.get_base_model(model_id, settings.load_prefs())
+            m = registry.get_base_model(REFINER_ID, settings.load_prefs())
             if m is None or not registry.model_is_ready(m):
-                raise gr.Error("Ce modèle n'est pas téléchargé (onglet Bibliothèque).")
+                raise gr.Error("Flux.2 Klein n'est pas téléchargé "
+                               "(onglet Bibliothèque).")
             logs: list[str] = []
             progress(0.05, desc="Upscale créatif…")
             try:
                 out = gen_engine.creative_upscale(
-                    model_id=model_id, image=image, scale=int(scale),
+                    model_id=REFINER_ID, image=image, scale=int(scale),
                     prompt=prompt or "", creativity=float(creativity),
                     log=logs.append)
             except Exception as exc:  # noqa: BLE001
@@ -73,5 +59,7 @@ def build_creative_tab():
             progress(1.0, desc="Terminé")
             return str(out), "\n".join(logs)
 
-        run.click(do_creative, inputs=[image, model, scale, creativity, prompt],
+        run.click(do_creative, inputs=[image, scale, creativity, prompt],
                   outputs=[result, logbox])
+
+    return image

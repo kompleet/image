@@ -5,7 +5,7 @@ Outils :
   depth  -> Depth Anything V2 (Small) : profondeur + carte de normales.
   bg     -> RMBG-1.4 : suppression d'arrière-plan (PNG transparent).
 
-Réutilise les helpers torch CUDA de setup_upscalers (build adaptée au GPU,
+Réutilise les helpers torch CUDA de _torch_setup (build adaptée au GPU,
 sans verrouiller de DLL). Lançable depuis l'interface ou en ligne :
     python scripts/setup_tools.py depth
 """
@@ -26,7 +26,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from atelier import settings  # noqa: E402
-from setup_upscalers import ensure_torch_cuda, pin_numpy, sh  # noqa: E402
+from _torch_setup import ensure_torch_cuda, pin_numpy, sh  # noqa: E402
 
 # Modèle léger (~100 Mo) : rapide, tourne même sur Pascal (GTX 10xx) et en CPU.
 DEPTH_REPO = "depth-anything/Depth-Anything-V2-Small-hf"
