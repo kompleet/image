@@ -40,6 +40,14 @@ set "PIP_NET=--retries 8 --timeout 120 --no-warn-script-location"
     "%PY%" -m pip install -r requirements.txt %PIP_NET% || goto :error
 )
 
+REM Auto-reparation : si des outils (Toolkit/Upscale) ont installe transformers/
+REM diffusers en version trop recente (incompatible huggingface_hub<1.0 requis
+REM par Gradio, ou torch 2.4), on les ramene a une version compatible. On ne les
+REM installe PAS s'ils sont absents (install de base legere).
+echo [2/4] Verification de compatibilite des outils...
+"%PY%" -m pip show transformers >nul 2>&1 && "%PY%" -m pip install "transformers>=4.45,<5" %PIP_NET%
+"%PY%" -m pip show diffusers >nul 2>&1 && "%PY%" -m pip install "diffusers>=0.30,<0.32" %PIP_NET%
+
 echo [3/4] Telechargement du moteur stable-diffusion.cpp (CUDA)...
 "%PY%" scripts\get_sdcpp.py --variant cuda || goto :error
 

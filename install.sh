@@ -26,6 +26,12 @@ PIP_NET="--retries 8 --timeout 120"
 pip install --upgrade pip $PIP_NET
 pip install -r requirements.txt $PIP_NET || pip install -r requirements.txt $PIP_NET
 
+# Auto-reparation : si des outils ont installe transformers/diffusers en version
+# trop recente (incompatible huggingface_hub<1.0 / torch 2.4), on les ramene a
+# une version compatible. On ne les installe PAS s'ils sont absents.
+pip show transformers >/dev/null 2>&1 && pip install "transformers>=4.45,<5" $PIP_NET || true
+pip show diffusers >/dev/null 2>&1 && pip install "diffusers>=0.30,<0.32" $PIP_NET || true
+
 echo "[3/4] Telechargement du moteur stable-diffusion.cpp (CUDA)..."
 python scripts/get_sdcpp.py --variant cuda
 
