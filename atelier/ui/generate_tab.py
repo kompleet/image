@@ -101,7 +101,11 @@ def build_generative_tab(model_id: str, title: str,
                         "Flux.2 est un modèle d'**édition** : fournissez une image "
                         "et décrivez la modification dans le prompt (ex. *« change "
                         "la couleur de la voiture en rouge »*). L'édition est "
-                        "pilotée par le prompt (pas de curseur de force).")
+                        "pilotée par le prompt (pas de curseur de force).  \n"
+                        "⏱️ L'édition est **plus lourde** que la génération (l'image "
+                        "de référence ajoute des tokens) → restez sur le preset "
+                        "**⚡ Rapide (4 pas)** et une résolution **≤ 1024** pour que "
+                        "ça reste rapide.")
                     init_image = gr.Image(label="Image à éditer", type="pil")
 
                 with gr.Accordion("🧩 LoRA", open=False):
