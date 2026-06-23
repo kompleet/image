@@ -355,29 +355,27 @@ def build_generative_tab(model_id: str, title: str,
             threading.Thread(target=worker, daemon=True).start()
             logs: list[str] = []
             last_mtime = None
+            last_emit = 0.0
             progress(0.02, desc="Chargement du modèle…")
             while True:
                 try:
-                    line = q.get(timeout=0.4)
+                    line = q.get(timeout=0.3)
                 except queue.Empty:
                     line = ""
                 if line is None:
                     break
-                changed = False
                 if line:
                     logs.append(line)
-                    changed = True
                     mt = step_re.search(line)
                     if mt:
                         cur = min(int(mt.group(1)), total)
                         progress(0.05 + 0.9 * cur / total,
                                  desc=f"étape {cur}/{total}")
-                # Aperçu : on lit le fichier en mémoire (copie PIL) plutôt que de
-                # passer le chemin à Gradio — sous Windows sd-cli écrit ce fichier
-                # en continu et Gradio ne peut pas l'ouvrir pendant l'écriture.
-                # On ne pousse une nouvelle image QUE si le fichier a changé
-                # (mtime), sinon Gradio re-rend la même image -> clignotement.
+                # Aperçu : nouvelle image SEULEMENT si le fichier a changé (mtime).
+                # On lit en mémoire (copie PIL) car sous Windows sd-cli écrit ce
+                # fichier en continu (verrou pendant l'écriture).
                 prev = gr.update()
+                new_prev = False
                 if preview_path.exists():
                     try:
                         m = preview_path.stat().st_mtime
@@ -386,21 +384,26 @@ def build_generative_tab(model_id: str, title: str,
                             with Image.open(preview_path) as _pim:
                                 prev = _pim.copy()
                             last_mtime = m
-                            changed = True
+                            new_prev = True
                     except (OSError, ValueError):
                         pass
-                if not changed:
-                    continue
-                yield gr.update(), prev, "\n".join(logs[-400:]), gr.update()
+                # On émet tout de suite pour une nouvelle frame d'aperçu, sinon on
+                # throttle le journal à ~2x/s : au démarrage sd-cli crache beaucoup
+                # de lignes -> évite un re-rendu permanent qui fait « clignoter ».
+                now = time.time()
+                if new_prev or (now - last_emit) >= 0.5:
+                    last_emit = now
+                    yield gr.update(), prev, "\n".join(logs[-400:]), gr.update()
 
             if "err" in state:
                 logs.append(f"\n[ERREUR] {state['err']}")
-                yield [], gr.update(value=None), "\n".join(logs), []
+                # On garde la dernière frame d'aperçu (pas de flash vers le vide).
+                yield [], gr.update(), "\n".join(logs), []
                 return
             progress(1.0, desc="Terminé")
             paths = state.get("outs", [])
             items = [(p, f"seed {base_seed + i}") for i, p in enumerate(paths)]
-            yield items, gr.update(value=None), "\n".join(logs), paths
+            yield items, gr.update(), "\n".join(logs), paths
 
         gen_evt = run.click(
             do_generate,

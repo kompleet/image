@@ -74,17 +74,22 @@ def main():
             pipe.enable_vae_tiling()
         except Exception:  # noqa: BLE001
             pass
-        free, _ = torch.cuda.mem_get_info()
-        if free >= int(9.5 * 1024 ** 3):
-            # Assez de VRAM libre -> modèle résident sur le GPU (BIEN plus rapide :
-            # pas de rechargement par tuile).
+        total = torch.cuda.get_device_properties(0).total_memory
+        if total >= int(10 * 1024 ** 3):
+            # >= ~10 Go : on garde le modèle RÉSIDENT sur le GPU (bien plus rapide
+            # qu'un rechargement par tuile). L'attention slicing + le VAE tiling
+            # gardent le pic mémoire sous ~9 Go -> tient sur 11-12 Go.
             pipe.to("cuda")
-            print(f"[upscale] VRAM libre {free/1e9:.1f} Go -> modèle résident GPU "
+            try:
+                pipe.enable_attention_slicing()
+            except Exception:  # noqa: BLE001
+                pass
+            print(f"[upscale] {total/1e9:.0f} Go VRAM -> modèle résident GPU "
                   "(rapide).", flush=True)
         else:
-            # VRAM serrée -> offload CPU (un module à la fois, plus lent).
+            # Petite carte -> offload CPU (un module à la fois, plus lent).
             pipe.enable_model_cpu_offload()
-            print(f"[upscale] VRAM libre {free/1e9:.1f} Go -> offload CPU "
+            print(f"[upscale] {total/1e9:.0f} Go VRAM -> offload CPU "
                   "(plus lent).", flush=True)
 
     prompt = args.prompt or ("high quality, sharp focus, fine intricate details, "
