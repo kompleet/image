@@ -70,27 +70,21 @@ def main():
         pipe.scheduler.config, use_karras_sigmas=True)
     pipe.set_progress_bar_config(disable=True)
     if torch.cuda.is_available():
-        try:
-            pipe.enable_vae_tiling()
-        except Exception:  # noqa: BLE001
-            pass
-        total = torch.cuda.get_device_properties(0).total_memory
-        if total >= int(10 * 1024 ** 3):
-            # >= ~10 Go : on garde le modèle RÉSIDENT sur le GPU (bien plus rapide
-            # qu'un rechargement par tuile). L'attention slicing + le VAE tiling
-            # gardent le pic mémoire sous ~9 Go -> tient sur 11-12 Go.
-            pipe.to("cuda")
+        # GPU EXCLUSIF : tous les modules sur le GPU, AUCUN offload CPU. L'attention
+        # slicing + le VAE tiling gardent le pic mémoire bas (~8 Go) pour tenir sur
+        # 11-12 Go. (Si OOM -> message clair, voir refine().)
+        pipe.to("cuda")
+        for _enable in ("enable_vae_tiling", "enable_attention_slicing"):
             try:
-                pipe.enable_attention_slicing()
+                getattr(pipe, _enable)()
             except Exception:  # noqa: BLE001
                 pass
-            print(f"[upscale] {total/1e9:.0f} Go VRAM -> modèle résident GPU "
-                  "(rapide).", flush=True)
-        else:
-            # Petite carte -> offload CPU (un module à la fois, plus lent).
-            pipe.enable_model_cpu_offload()
-            print(f"[upscale] {total/1e9:.0f} Go VRAM -> offload CPU "
-                  "(plus lent).", flush=True)
+        total = torch.cuda.get_device_properties(0).total_memory
+        print(f"[upscale] {total/1e9:.0f} Go VRAM -> 100% sur le GPU (pas d'offload "
+              "CPU).", flush=True)
+    else:
+        print("[upscale] ATTENTION : pas de CUDA -> CPU (très lent). Réinstallez "
+              "l'outil pour obtenir un PyTorch CUDA.", flush=True)
 
     prompt = args.prompt or ("high quality, sharp focus, fine intricate details, "
                              "crisp textures, photorealistic, 8k, masterpiece")
@@ -124,7 +118,12 @@ def main():
                   controlnet_conditioning_scale=float(args.cn_scale))
 
     def refine(tile_img):
-        return pipe(image=tile_img, control_image=tile_img, **common).images[0]
+        try:
+            return pipe(image=tile_img, control_image=tile_img, **common).images[0]
+        except torch.cuda.OutOfMemoryError:
+            torch.cuda.empty_cache()
+            sys.exit("VRAM insuffisante sur le GPU pour l'upscale. Baissez le "
+                     "facteur (×2) ou la résolution de l'image source.")
 
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)

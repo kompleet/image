@@ -65,10 +65,14 @@ def build_generative_tab(model_id: str, title: str,
     with gr.Tab(title):
         m = registry.get_base_model(model_id, settings.load_prefs())
         ready = m is not None and registry.model_is_ready(m)
+        # Famille « édition » (Flux.2/Kontext) : modification d'image via -r ;
+        # sinon img2img classique (-i + force de transformation).
+        is_edit = bool(m) and m.family == "flux2"
         status = ("<span class='status-ok'>● modèle prêt</span>" if ready
                   else "<span class='status-missing'>○ à télécharger "
                        "(onglet Bibliothèque)</span>")
-        gr.Markdown(f"### {title} — text-to-image & image-to-image  ·  {status}")
+        _mode = "édition d'image" if is_edit else "image-to-image"
+        gr.Markdown(f"### {title} — text-to-image & {_mode}  ·  {status}")
 
         with gr.Row():
             # ----- Entrées -----
@@ -95,16 +99,29 @@ def build_generative_tab(model_id: str, title: str,
                 negative = gr.Textbox(label="Prompt négatif", lines=1,
                                       visible=d.get("supports_negative", False))
 
-                with gr.Accordion("🖼️ Image de départ (image-to-image)",
-                                  open=False):
-                    gr.Markdown(
-                        "Partez d'une image existante : décrivez le rendu voulu "
-                        "dans le prompt, et réglez la **force de transformation** "
-                        "(bas = proche de l'original, haut = réinventé). Le format "
-                        "de sortie s'adapte automatiquement à votre image.")
-                    init_image = gr.Image(label="Image de départ", type="pil")
+                _acc_title = ("🖼️ Image de référence (édition d'image)" if is_edit
+                              else "🖼️ Image de départ (image-to-image)")
+                with gr.Accordion(_acc_title, open=False):
+                    if is_edit:
+                        gr.Markdown(
+                            "**Éditer une image** : chargez-la et décrivez **la "
+                            "modification** dans le prompt (ex. *« change la "
+                            "couleur de la voiture en rouge »*, *« ajoute de la "
+                            "neige »*). Édition pilotée par le prompt (pas de "
+                            "curseur de force). Le format de sortie s'adapte à "
+                            "votre image.")
+                    else:
+                        gr.Markdown(
+                            "Partez d'une image : décrivez le rendu voulu et réglez "
+                            "la **force de transformation** (bas = proche de "
+                            "l'original, haut = réinventé). Le format de sortie "
+                            "s'adapte à votre image.")
+                    init_image = gr.Image(
+                        label="Image à éditer" if is_edit else "Image de départ",
+                        type="pil")
                     strength = gr.Slider(0.1, 1.0, value=0.6, step=0.05,
-                                         label="Force de transformation")
+                                         label="Force de transformation",
+                                         visible=not is_edit)
 
                 with gr.Accordion("🧩 LoRA", open=False):
                     with gr.Row():
@@ -171,10 +188,10 @@ def build_generative_tab(model_id: str, title: str,
                 flow_shift = gr.Slider(
                     0.0, 12.0, value=float(d.get("flow_shift", 0.0)), step=0.1,
                     label="Flow shift",
-                    info="Décale le calendrier de bruit. ↑ (≈3–6) = plus de poids "
-                         "sur la composition/structure (utile en haute résolution) ; "
-                         "↓ (≈1–2) = plus de détails fins. 0 = auto (le modèle "
-                         "choisit selon la résolution).")
+                    info="Laissez 0 (auto) : le modèle choisit la bonne valeur "
+                         "selon la résolution. Une valeur trop basse (1–2) laisse "
+                         "du GRAIN/bruit en haute résolution ; ~3–4 renforce la "
+                         "structure.")
                 with gr.Row():
                     seed = gr.Number(value=-1, label="Seed (-1 = aléatoire)",
                                      precision=0)
@@ -315,10 +332,16 @@ def build_generative_tab(model_id: str, title: str,
                 base_seed = random.randint(0, 2**31 - 1)
 
             settings.ensure_dirs()
-            init_path = None
+            # Modèle d'édition (Flux.2) -> image via -r (ref_image) ; sinon
+            # img2img classique via -i (init_image) + force.
+            init_path = ref_path = None
             if init_image is not None:
-                init_path = settings.TMP_DIR / "i2i_init.png"
-                init_image.save(init_path)
+                p = settings.TMP_DIR / ("edit_ref.png" if is_edit else "i2i_init.png")
+                init_image.save(p)
+                if is_edit:
+                    ref_path = p
+                else:
+                    init_path = p
 
             loras = [(lora1, float(lora1_w)), (lora2, float(lora2_w))]
             loras = [(n, w) for n, w in loras if n]
@@ -342,7 +365,8 @@ def build_generative_tab(model_id: str, title: str,
                         cfg_scale=float(cfg), width=int(width), height=int(height),
                         seed=base_seed, batch_count=int(batch), sampler=sampler,
                         schedule=schedule, flow_shift=float(flow_shift or 0.0),
-                        init_image=init_path, strength=float(strength), loras=loras,
+                        init_image=init_path, strength=float(strength),
+                        ref_image=ref_path, loras=loras,
                         diffusion_override=gen_engine.custom_path(custom_diff),
                         vae_override=gen_engine.custom_path(custom_vae),
                         encoder_override=gen_engine.custom_path(custom_enc),

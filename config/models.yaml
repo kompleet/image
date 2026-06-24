@@ -13,34 +13,29 @@
 base_models:
 
   # --------------------------------------------------------------------------
-  - id: flux1-dev
-    name: "FLUX.1-dev"
-    family: flux1
-    tags: [qualité, photoréalisme, adhérence]
+  - id: flux2-klein-9b
+    name: "Flux.2 Klein 9B"
+    family: flux2
+    tags: [qualité, rapide, distillé, non-censuré]
     description: >
-      FLUX.1-dev (12B) en GGUF — qualité d'image et adhérence au prompt de
-      référence. Non distillé : ~20 pas + guidance (≈3,5), donc plus lent que
-      les modèles « turbo ». Diffusion GGUF + encodeurs T5-XXL (déchargé en RAM)
-      et CLIP-L + VAE FLUX.1. Tient sur 11–12 Go (diffusion Q4 ≈ 6,8 Go).
-      Légèrement filtré : pour du non censuré basé Flux.1, demandez « Chroma ».
+      FLUX.2 Klein 9B en GGUF (distillé, rapide : 4 pas, CFG 1.0). Diffusion Q4
+      ≈ 5 Go en VRAM ; encodeur Qwen3-8B ABLITERÉ (non censuré) déchargé en RAM ;
+      VAE flux2. Tourne dès 10–12 Go. Modèle d'ÉDITION : fournissez une image de
+      référence et décrivez la modification dans le prompt.
     sources:
       diffusion:
-        repo: city96/FLUX.1-dev-gguf
-        match: "flux1-dev-{quant}.gguf"
+        repo: unsloth/FLUX.2-klein-9B-GGUF
+        match: "flux-2-klein-9b-{quant}.gguf"
         quantizable: true
       vae:
-        # VAE de FLUX.1 (ae.safetensors), miroir ungated.
-        repo: camenduru/FLUX.1-dev-ungated
-        match: "ae.safetensors"
-      t5xxl:
-        repo: city96/t5-v1_1-xxl-encoder-gguf
-        match: "t5-v1_1-xxl-encoder-{enc_quant}.gguf"
+        repo: Comfy-Org/flux2-klein-9B
+        match: "split_files/vae/flux2-vae.safetensors"
+      text_encoder:
+        repo: bartowski/mlabonne_Qwen3-8B-abliterated-GGUF
+        match: "*Qwen3-8B-abliterated*{enc_quant}*.gguf"
         quantizable: true
-      clip_l:
-        repo: comfyanonymous/flux_text_encoders
-        match: "clip_l.safetensors"
     defaults:
-      steps: 20
+      steps: 4
       cfg_scale: 1.0
       sampler: euler
       scheduler: simple
@@ -48,8 +43,9 @@ base_models:
       height: 1024
       supports_negative: false
     presets:
-      - {name: "📷 Qualité (recommandé)", sampler: euler,   scheduler: simple, steps: 20, cfg_scale: 1.0}
-      - {name: "Détaillé (dpm++ 2M)",     sampler: dpm++2m, scheduler: simple, steps: 28, cfg_scale: 1.0}
-      - {name: "Brouillon rapide",        sampler: euler,   scheduler: simple, steps: 12, cfg_scale: 1.0}
-    vram_min_gb: 11
+      - {name: "⚡ Rapide (recommandé)", sampler: euler,         scheduler: simple, steps: 4,  cfg_scale: 1.0}
+      - {name: "Équilibré (res ms)",     sampler: res_multistep, scheduler: simple, steps: 6,  cfg_scale: 1.0}
+      - {name: "Qualité (dpm++ 2M)",     sampler: dpm++2m,       scheduler: simple, steps: 10, cfg_scale: 1.0}
+    vram_min_gb: 10
+
 

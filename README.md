@@ -1,7 +1,7 @@
 # 🟢 GEN.Ai Image Workshop
 
 Studio d'inférence d'images **local**, moderne et léger, pensé pour les artistes.
-Génère avec **FLUX.1-dev** (GGUF), avec **bibliothèque de modèles à la
+Génère avec **Flux.2 Klein 9B** (GGUF), avec **bibliothèque de modèles à la
 demande**, **optimisations automatiques selon votre carte RTX et votre RAM**,
 **LoRA**, **presets sampler/scheduler**, **styles enregistrés**, **upscale
 créatif façon Magnific** et un **Toolkit** (profondeur, détourage).
@@ -10,7 +10,7 @@ Aucun ComfyUI, aucune usine à gaz : une interface web claire.
 
 | Onglet | Rôle |
 |---|---|
-| 🎬 **FLUX.1-dev** | text-to-image & image-to-image, presets, styles, LoRA, modèle perso |
+| 🟣 **Flux.2 Klein** | text-to-image & édition d'image, presets, styles, LoRA, modèle perso |
 | 📚 **Bibliothèque** | catalogue, recommandations selon le matériel, téléchargement à la demande |
 | ✨ **Upscale créatif** | façon Magnific : ré-invente le détail (SDXL + ControlNet Tile, par tuiles) |
 | 🧰 **Toolkit** | carte de profondeur · suppression d'arrière-plan (PNG transparent) |
@@ -42,16 +42,17 @@ run.bat          ::  lance l'interface sur http://127.0.0.1:7860
 
 ### Moteur
 La génération passe par **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)**
-(natif CUDA, format GGUF) — pas de PyTorch lourd pour la génération. FLUX.1-dev
-(12B) se compose de :
-- diffusion — [`city96/FLUX.1-dev-gguf`](https://huggingface.co/city96/FLUX.1-dev-gguf)
-- VAE FLUX.1 — [`camenduru/FLUX.1-dev-ungated`](https://huggingface.co/camenduru/FLUX.1-dev-ungated) (ungated)
-- encodeurs de texte — [`city96/t5-v1_1-xxl-encoder-gguf`](https://huggingface.co/city96/t5-v1_1-xxl-encoder-gguf)
-  (T5-XXL, déchargé en RAM) + [`comfyanonymous/flux_text_encoders`](https://huggingface.co/comfyanonymous/flux_text_encoders) (CLIP-L)
+(natif CUDA, format GGUF) — pas de PyTorch lourd pour la génération. Flux.2 Klein
+9B se compose de :
+- diffusion — [`unsloth/FLUX.2-klein-9B-GGUF`](https://huggingface.co/unsloth/FLUX.2-klein-9B-GGUF) (distillée, 4 pas)
+- VAE flux2 — [`Comfy-Org/flux2-klein-9B`](https://huggingface.co/Comfy-Org/flux2-klein-9B) (ungated)
+- encodeur de texte — [`bartowski/mlabonne_Qwen3-8B-abliterated-GGUF`](https://huggingface.co/bartowski/mlabonne_Qwen3-8B-abliterated-GGUF)
+  (Qwen3-8B **abliteré / non censuré**, via `--llm`, déchargé en RAM)
 
-> FLUX.1-dev n'est pas distillé : ~20 pas + guidance (≈3,5) → plus lent mais
-> qualité et adhérence au prompt supérieures. Il est légèrement filtré ; pour du
-> non censuré basé Flux.1, on peut ajouter **Chroma**.
+> Klein est un modèle d'**édition** : fournissez une image de référence (`-r`)
+> et décrivez la modification dans le prompt. L'encodeur abliteré réduit les
+> refus ; pour un encodeur standard, déposez un `Qwen3-8B` GGUF dans
+> `models/custom/` et choisissez-le comme *Encodeur (local)*.
 
 ### Optimisation automatique
 L'application détecte votre GPU (via `nvidia-smi`) et votre RAM, puis choisit seul :
@@ -67,7 +68,7 @@ Multi-GPU : la plus grosse carte est utilisée par défaut, modifiable dans
 **Réglages**. Tout est surchargeable manuellement (mode auto décochable).
 
 ### Presets & styles
-Un menu **Préréglage** propose des combos éprouvés (FLUX.1-dev → ~20 pas /
+Un menu **Préréglage** propose des combos éprouvés (Flux.2 Klein → 4 pas /
 CFG 1.0 / **euler + simple**). L'accordéon **Prompt système / style** permet
 d'enregistrer des préfixes de style réutilisables (persistés dans `userdata/`).
 

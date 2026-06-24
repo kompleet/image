@@ -17,9 +17,9 @@ def build_creative_tab(tab_id="creative"):
             "**SDXL + ControlNet Tile** : ré-invente le détail par tuiles, "
             "ancrées sur l'image agrandie → tuiles cohérentes, **fondu sans "
             "couture**. Le curseur *Créativité* dose le détail ajouté.\n\n"
-            "> ⚠️ Chaque tuile = une passe SDXL → c'est **lent** (le modèle reste "
-            "sur le GPU si la VRAM le permet, sinon offload CPU). **×2 conseillé** ; "
-            "×4/×8 = beaucoup de tuiles. Sortie plafonnée à 4096 px.")
+            "> ⚙️ Tourne **100% sur le GPU** (pas d'offload CPU). Chaque tuile = une "
+            "passe SDXL → **×2 conseillé** ; ×4/×8 = beaucoup de tuiles. Sortie "
+            "plafonnée à 4096 px. Si « VRAM insuffisante » : baissez le facteur.")
 
         with gr.Accordion("⚙️ Installer l'upscale créatif (en 1 clic)",
                           open=not tools.upscale_is_installed()):
