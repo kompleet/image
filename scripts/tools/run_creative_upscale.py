@@ -57,9 +57,18 @@ def main():
     except ImportError:
         sys.exit("diffusers manquant. Réinstallez l'outil depuis l'onglet Upscale.")
 
-    if not torch.cuda.is_available():
-        print("[upscale] ATTENTION : pas de CUDA, exécution CPU (très lent).")
-    dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+    cuda = torch.cuda.is_available()
+    dev = torch.cuda.get_device_name(0) if cuda else "CPU"
+    print(f"[upscale] torch {torch.__version__} | CUDA: {cuda} | device: {dev}",
+          flush=True)
+    if not cuda:
+        # On NE tourne PAS sur CPU (extrêmement lent et trompeur). On arrête net
+        # avec un message clair : il faut un PyTorch CUDA.
+        sys.exit(
+            "PyTorch ne voit PAS le GPU (build CPU installée). C'est la cause "
+            "d'une lenteur extrême. Réinstallez l'outil (bouton « Installer ») "
+            "ou relancez install.bat pour obtenir un PyTorch CUDA.")
+    dtype = torch.float16
 
     print("[upscale] chargement SDXL + ControlNet Tile…", flush=True)
     controlnet = ControlNetModel.from_pretrained(args.controlnet, torch_dtype=dtype)
@@ -69,22 +78,17 @@ def main():
     pipe.scheduler = DPMSolverMultistepScheduler.from_config(
         pipe.scheduler.config, use_karras_sigmas=True)
     pipe.set_progress_bar_config(disable=True)
-    if torch.cuda.is_available():
-        # GPU EXCLUSIF : tous les modules sur le GPU, AUCUN offload CPU. On garde
-        # l'attention RAPIDE (SDPA, défaut de diffusers/torch 2.x) — PAS de
-        # attention slicing qui ralentirait. Le VAE tiling suffit à contenir la
-        # mémoire de décodage. (Si OOM -> message clair, voir refine().)
-        pipe.to("cuda")
-        try:
-            pipe.enable_vae_tiling()
-        except Exception:  # noqa: BLE001
-            pass
-        total = torch.cuda.get_device_properties(0).total_memory
-        print(f"[upscale] {total/1e9:.0f} Go VRAM -> 100% sur le GPU (SDPA, pas "
-              "d'offload).", flush=True)
-    else:
-        print("[upscale] ATTENTION : pas de CUDA -> CPU (très lent). Réinstallez "
-              "l'outil pour obtenir un PyTorch CUDA.", flush=True)
+    # GPU EXCLUSIF : tous les modules sur le GPU, AUCUN offload CPU. Attention
+    # RAPIDE (SDPA, défaut diffusers/torch 2.x) — pas d'attention slicing. Le VAE
+    # tiling suffit pour la mémoire de décodage. (Si OOM -> message clair, refine().)
+    pipe.to("cuda")
+    try:
+        pipe.enable_vae_tiling()
+    except Exception:  # noqa: BLE001
+        pass
+    total = torch.cuda.get_device_properties(0).total_memory
+    print(f"[upscale] {total/1e9:.0f} Go VRAM -> 100% sur le GPU (SDPA, pas "
+          "d'offload).", flush=True)
 
     prompt = args.prompt or ("high quality, sharp focus, fine intricate details, "
                              "crisp textures, photorealistic, 8k, masterpiece")

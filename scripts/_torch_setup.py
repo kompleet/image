@@ -90,6 +90,14 @@ def ensure_torch_cuda():
                      "torch", "torchvision"])
     sh([sys.executable, "-m", "pip", "install", "--no-cache-dir",
         *_torch_install_args()])
+    # Vérification finale : si torch ne voit toujours pas le GPU, on le DIT fort
+    # (sinon les outils tourneraient sur CPU = extrêmement lent, sans prévenir).
+    if _torch_cuda_ok():
+        print("✅ PyTorch CUDA opérationnel.")
+    else:
+        print("⚠️  ATTENTION : PyTorch ne voit PAS le GPU (CUDA indisponible). "
+              "Les outils tourneraient sur CPU (très lent). Vérifiez vos pilotes "
+              "NVIDIA (nvidia-smi) puis relancez l'installation.")
 
 
 def pin_numpy():
