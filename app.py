@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GEN.Ai Image Workshop — studio d'inférence d'images en local (Gradio).
 
-Onglets : Génération (Flux.2 Klein 9B, GGUF) · Bibliothèque · Upscale créatif ·
+Onglets : Génération (FLUX.1-dev, GGUF) · Bibliothèque · Upscale créatif ·
 Toolkit (profondeur, détourage) · Réglages.
 """
 from __future__ import annotations
@@ -61,7 +61,7 @@ def build_app() -> gr.Blocks:
                    head=_HEAD) as demo:
         gr.HTML(
             f"<div id='atelier-header'><h1>🎨 {APP_NAME}</h1>"
-            f"<div class='sub'>Génération d'images locale · Flux.2 Klein 9B · "
+            f"<div class='sub'>Génération d'images locale · FLUX.1-dev · "
             f"upscale créatif · v{__version__}</div></div>")
 
         if sd_cli is None:
@@ -76,7 +76,7 @@ def build_app() -> gr.Blocks:
         pending_upscale = gr.State(None)
 
         with gr.Tabs() as tabs:
-            build_generative_tab("flux2-klein-9b", "🟣 Flux.2 Klein 9B",
+            build_generative_tab("flux1-dev", "🎬 FLUX.1-dev",
                                  tabs=tabs, pending_upscale=pending_upscale)
             build_library_tab()
             creative_input = build_creative_tab(tab_id="creative")

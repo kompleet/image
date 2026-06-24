@@ -43,8 +43,8 @@ class GenRequest:
     diffusion_model: Path | None = None   # modèle de diffusion seul (GGUF flow)
     vae: Path | None = None
     model_path: Path | None = None        # checkpoint complet -> -m
-    text_encoder: Path | None = None       # --llm (Qwen3 pour Flux.2 Klein)
-    t5xxl: Path | None = None              # --t5xxl (encodeur T5, si applicable)
+    text_encoder: Path | None = None       # --llm (modèles à encodeur LLM)
+    t5xxl: Path | None = None              # --t5xxl (FLUX.1, etc.)
     clip_l: Path | None = None             # --clip_l
     uncond_model: Path | None = None
     extra_flags: list[str] = field(default_factory=list)

@@ -95,21 +95,16 @@ def build_generative_tab(model_id: str, title: str,
                 negative = gr.Textbox(label="Prompt négatif", lines=1,
                                       visible=d.get("supports_negative", False))
 
-                with gr.Accordion("🖼️ Image de référence (édition d'image)",
+                with gr.Accordion("🖼️ Image de départ (image-to-image)",
                                   open=False):
                     gr.Markdown(
-                        "**Éditer une image existante.** Chargez une image, puis "
-                        "décrivez **la modification** dans le prompt — inutile de "
-                        "tout redécrire :  \n"
-                        "• *« remplace le ciel par un coucher de soleil »*  \n"
-                        "• *« transforme la voiture en version cyberpunk »*  \n"
-                        "• *« ajoute de la neige au sol »*  \n"
-                        "Le **format de sortie s'adapte automatiquement** à votre "
-                        "image. L'édition est pilotée par le prompt (pas de curseur "
-                        "de force).  \n"
-                        "⏱️ Plus lourde que la génération → restez sur **⚡ Rapide "
-                        "(4 pas)** et une résolution **≤ 1024**.")
-                    init_image = gr.Image(label="Image à éditer", type="pil")
+                        "Partez d'une image existante : décrivez le rendu voulu "
+                        "dans le prompt, et réglez la **force de transformation** "
+                        "(bas = proche de l'original, haut = réinventé). Le format "
+                        "de sortie s'adapte automatiquement à votre image.")
+                    init_image = gr.Image(label="Image de départ", type="pil")
+                    strength = gr.Slider(0.1, 1.0, value=0.6, step=0.05,
+                                         label="Force de transformation")
 
                 with gr.Accordion("🧩 LoRA", open=False):
                     with gr.Row():
@@ -270,8 +265,8 @@ def build_generative_tab(model_id: str, title: str,
         ratio.change(on_ratio, inputs=[ratio], outputs=[width, height])
 
         def _fit_to_ref(img):
-            """Édition : cale la sortie sur le format de l'image de référence
-            (côté long plafonné à 1024 px pour rester rapide, multiples de 16)."""
+            """img2img : cale la sortie sur le format de l'image de départ
+            (côté long plafonné à 1024 px, multiples de 16)."""
             if img is None:
                 return gr.update(), gr.update(), gr.update()
             w0, h0 = img.size
@@ -298,7 +293,7 @@ def build_generative_tab(model_id: str, title: str,
             preset.change(apply_preset, inputs=[preset],
                           outputs=[sampler, schedule, steps, cfg])
 
-        def do_generate(system_prompt, prompt, negative, init_image,
+        def do_generate(system_prompt, prompt, negative, init_image, strength,
                         width, height, steps, cfg, sampler, schedule, flow_shift,
                         seed, batch, lora1, lora1_w, lora2, lora2_w,
                         custom_diff, custom_vae, custom_enc,
@@ -320,10 +315,10 @@ def build_generative_tab(model_id: str, title: str,
                 base_seed = random.randint(0, 2**31 - 1)
 
             settings.ensure_dirs()
-            ref_path = None
+            init_path = None
             if init_image is not None:
-                ref_path = settings.TMP_DIR / "edit_ref.png"
-                init_image.save(ref_path)
+                init_path = settings.TMP_DIR / "i2i_init.png"
+                init_image.save(init_path)
 
             loras = [(lora1, float(lora1_w)), (lora2, float(lora2_w))]
             loras = [(n, w) for n, w in loras if n]
@@ -347,7 +342,7 @@ def build_generative_tab(model_id: str, title: str,
                         cfg_scale=float(cfg), width=int(width), height=int(height),
                         seed=base_seed, batch_count=int(batch), sampler=sampler,
                         schedule=schedule, flow_shift=float(flow_shift or 0.0),
-                        ref_image=ref_path, loras=loras,
+                        init_image=init_path, strength=float(strength), loras=loras,
                         diffusion_override=gen_engine.custom_path(custom_diff),
                         vae_override=gen_engine.custom_path(custom_vae),
                         encoder_override=gen_engine.custom_path(custom_enc),
@@ -413,7 +408,7 @@ def build_generative_tab(model_id: str, title: str,
 
         gen_evt = run.click(
             do_generate,
-            inputs=[system_prompt, prompt, negative, init_image, width,
+            inputs=[system_prompt, prompt, negative, init_image, strength, width,
                     height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
                     lora1, lora1_w, lora2, lora2_w,
                     custom_diff, custom_vae, custom_enc],
