@@ -339,6 +339,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--variant", choices=["cuda", "cpu"], default="cuda")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="re-télécharger même si un binaire est déjà présent "
+                         "(pour METTRE À JOUR le moteur)")
     ap.add_argument("--allow-ipv6", action="store_true",
                     help="ne pas forcer l'IPv4 (par défaut on force l'IPv4)")
     args = ap.parse_args()
@@ -363,7 +366,16 @@ def main():
         sys.exit("Téléchargez-en une manuellement dans ./bin.")
 
     # Binaire principal (skip si déjà présent, utile en cas de relance).
-    if _has_sd_cli():
+    if args.force:
+        # Mise à jour : on supprime les anciens binaires pour forcer le re-DL.
+        for n in ("sd-cli.exe", "sd.exe", "sd-cli", "sd"):
+            for p in BIN_DIR.rglob(n):
+                try:
+                    p.unlink()
+                    print(f"     - ancien binaire retiré : {p.name}", flush=True)
+                except OSError:
+                    pass
+    if _has_sd_cli() and not args.force:
         print("Binaire sd-cli déjà présent, on saute le téléchargement.")
     else:
         print(f"Téléchargement (binaire) : {best['name']}")
