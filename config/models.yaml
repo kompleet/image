@@ -72,16 +72,16 @@ base_models:
         match: "*wan_2.1_vae.safetensors"
     defaults:
       steps: 20
-      cfg_scale: 1.0
+      cfg_scale: 5.0
       sampler: euler
       scheduler: simple
       width: 1024
       height: 1024
-      supports_negative: false
+      supports_negative: true
     presets:
-      - {name: "📷 Qualité (recommandé)", sampler: euler,   scheduler: simple, steps: 20, cfg_scale: 1.0}
-      - {name: "Détaillé (dpm++ 2M)",     sampler: dpm++2m, scheduler: simple, steps: 28, cfg_scale: 1.0}
-      - {name: "Brouillon rapide",        sampler: euler,   scheduler: simple, steps: 12, cfg_scale: 1.0}
+      - {name: "📷 Qualité (recommandé)", sampler: euler,   scheduler: simple, steps: 20, cfg_scale: 5.0}
+      - {name: "Détaillé (dpm++ 2M)",     sampler: dpm++2m, scheduler: simple, steps: 28, cfg_scale: 4.5}
+      - {name: "Guidage fort",            sampler: euler,   scheduler: simple, steps: 24, cfg_scale: 7.0}
     vram_min_gb: 10
 
   # --------------------------------------------------------------------------
