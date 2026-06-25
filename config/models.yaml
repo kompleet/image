@@ -107,7 +107,7 @@ base_models:
         repo: Comfy-Org/Wan_2.1_ComfyUI_repackaged
         match: "*wan_2.1_vae.safetensors"
     defaults:
-      steps: 6
+      steps: 8
       cfg_scale: 1.0
       sampler: euler
       scheduler: simple
@@ -115,9 +115,9 @@ base_models:
       height: 1024
       supports_negative: false
     presets:
-      - {name: "⚡ Rapide (recommandé)", sampler: euler,   scheduler: simple, steps: 6,  cfg_scale: 1.0}
-      - {name: "Très rapide",            sampler: euler,   scheduler: simple, steps: 4,  cfg_scale: 1.0}
-      - {name: "Qualité",                sampler: dpm++2m, scheduler: simple, steps: 10, cfg_scale: 1.0}
+      - {name: "⚡ Officiel (8 pas)",  sampler: euler,   scheduler: simple, steps: 8,  cfg_scale: 1.0}
+      - {name: "Très rapide (4 pas)", sampler: euler,   scheduler: simple, steps: 4,  cfg_scale: 1.0}
+      - {name: "Qualité (12 pas)",    sampler: dpm++2m, scheduler: simple, steps: 12, cfg_scale: 1.0}
     vram_min_gb: 10
 
 
