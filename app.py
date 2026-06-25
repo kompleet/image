@@ -78,6 +78,8 @@ def build_app() -> gr.Blocks:
         with gr.Tabs() as tabs:
             build_generative_tab("flux2-klein-9b", "🟣 Flux.2 Klein 9B",
                                  tabs=tabs, pending_upscale=pending_upscale)
+            build_generative_tab("krea2", "🎨 Krea 2",
+                                 tabs=tabs, pending_upscale=pending_upscale)
             build_library_tab()
             creative_input = build_creative_tab(tab_id="creative")
             build_toolkit_tab()

@@ -10,7 +10,8 @@ Aucun ComfyUI, aucune usine à gaz : une interface web claire.
 
 | Onglet | Rôle |
 |---|---|
-| 🟣 **Flux.2 Klein** | text-to-image & édition d'image, presets, styles, LoRA, modèle perso |
+| 🟣 **Flux.2 Klein** | rapide (4 pas) · text-to-image & édition d'image, presets, styles, LoRA |
+| 🎨 **Krea 2** | qualité · text-to-image (GGUF, encodeur Qwen3-VL, VAE WAN 2.1) |
 | 📚 **Bibliothèque** | catalogue, recommandations selon le matériel, téléchargement à la demande |
 | ✨ **Upscale créatif** | façon Magnific : ré-invente le détail (SDXL + ControlNet Tile, par tuiles) |
 | 🧰 **Toolkit** | carte de profondeur · suppression d'arrière-plan (PNG transparent) |
