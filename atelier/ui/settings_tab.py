@@ -5,7 +5,8 @@ import gradio as gr
 
 from .. import hardware, settings
 
-QUANTS = ["Q3_K", "Q4_K_S", "Q4_K_M", "Q5_K_M", "Q6_K", "Q8_0"]
+QUANTS = ["Q3_K_S", "Q3_K_M", "Q4_K_S", "Q4_K_M", "Q5_K_S", "Q5_K_M",
+          "Q6_K", "Q8_0"]
 
 
 def _gpu_choices() -> list[tuple[str, int]]:
