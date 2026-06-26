@@ -78,16 +78,19 @@ Déposez vos `.safetensors` / `.gguf` dans le dossier **`loras/`**, puis
 sélectionnez-les (jusqu'à 2) avec leur poids dans l'onglet Génération. La syntaxe
 `<lora:nom:poids>` est transmise au moteur.
 
-### Upscale (onglet ✨) — deux méthodes
-- **⚡ PiD** (recommandé) — décodeur de diffusion en espace pixel de NVIDIA,
-  **natif stable-diffusion.cpp** : encode l'image puis décode/agrandit vers ~2K
-  en **4 pas, 100% GPU, sans PyTorch ni tuiles**. Rapide. Modèles :
-  [`Comfy-Org/PixelDiT`](https://huggingface.co/Comfy-Org/PixelDiT) (décodeur +
-  Gemma-2-2B) + VAE FLUX.1. (doc : `leejet/stable-diffusion.cpp` → `docs/pid.md`)
-- **🟣 Créatif (Flux.2 Klein tuilé)** — façon Magnific, **100% sd.cpp/GPU** (pas
-  de PyTorch) : ré-invente le détail **par tuiles** via Flux.2 Klein (édition).
-  Facteur libre. Plus lent (le modèle se recharge à chaque tuile). Utilise le
-  modèle Flux.2 Klein déjà téléchargé — rien à installer en plus.
+### Upscale (onglet ✨) — trois méthodes
+- **⚡ PiD** — décodeur NVIDIA **natif sd.cpp** : ~2K en 4 pas, **100% GPU**,
+  sans PyTorch ni tuiles. Rapide. (`Comfy-Org/PixelDiT` + VAE FLUX.1.)
+- **🎨 SDXL + ControlNet Tile** (recommandé) — façon Magnific, **PyTorch**, modèle
+  **résident** sur le GPU (rapide) + tuiles cohérentes (ControlNet Tile) + fondu
+  cosinus. ~9 Go à installer (SDXL + ControlNet + VAE). Curseurs *créativité* /
+  *fidélité*. Tient sur 11–12 Go.
+- **🟣 Flux.2 Klein tuilé** (sd.cpp) — léger (rien à installer de plus, utilise le
+  Klein du catalogue) mais **lent** (recharge par tuile).
+
+### Toolkit (onglet 🧰)
+Profondeur (*Depth Anything V2*), suppression d'arrière-plan (*RMBG-1.4*) et
+**détourage d'objet au clic** (*Segment Anything*, `facebook/sam-vit-base`).
 
 ### Toolkit (onglet 🧰)
 Outils PyTorch installables en 1 clic (modèles téléchargés depuis Hugging Face) :

@@ -25,8 +25,8 @@ def build_toolkit_tab(tab_id="toolkit"):
     with gr.Tab("🧰 Toolkit", id=tab_id):
         gr.Markdown(
             "### Outils utilitaires\n"
-            "Carte de **profondeur** (utilisable comme guide de composition) et "
-            "**suppression d'arrière-plan** (PNG transparent).")
+            "Carte de **profondeur**, **suppression d'arrière-plan** (PNG "
+            "transparent) et **détourage d'objet au clic** (Segment Anything).")
 
         with gr.Tabs():
             # ---------- Profondeur ----------
@@ -107,3 +107,55 @@ def build_toolkit_tab(tab_id="toolkit"):
                     return str(out), "\n".join(logs)
 
                 b_run.click(do_bg, inputs=[b_image], outputs=[b_result, b_log])
+
+            # ---------- Segment Anything (clic) ----------
+            with gr.Tab("🪄 Détourer un objet (SAM)"):
+                gr.Markdown(
+                    "*Segment Anything* — **cliquez sur un objet** dans l'image "
+                    "puis « Extraire » : SAM le détoure en **PNG transparent**.")
+                _installer_block(
+                    "Segment Anything",
+                    "PyTorch + transformers (~375 Mo, facebook/sam-vit-base). "
+                    "Aucune commande à taper.",
+                    tools.install_sam_stream, tools.sam_is_installed())
+
+                s_point = gr.State(None)
+                with gr.Row():
+                    with gr.Column(scale=3):
+                        s_image = gr.Image(label="Image — cliquez sur l'objet",
+                                           type="pil", height=420)
+                        s_info = gr.Markdown("Cliquez un point sur l'image.")
+                        s_run = gr.Button("🪄 Extraire l'objet", variant="primary",
+                                          size="lg")
+                    with gr.Column(scale=4):
+                        s_result = gr.Image(label="Objet extrait (PNG transparent)",
+                                            height=520, format="png",
+                                            show_download_button=True,
+                                            image_mode="RGBA")
+                        s_log = gr.Textbox(label="Journal", lines=8,
+                                           autoscroll=True, elem_classes="log-box")
+
+                def _on_click(evt: gr.SelectData):
+                    x, y = int(evt.index[0]), int(evt.index[1])
+                    return (x, y), f"Point : ({x}, {y}). Cliquez « Extraire l'objet »."
+
+                s_image.select(_on_click, outputs=[s_point, s_info])
+
+                def do_sam(img, point, progress=gr.Progress()):
+                    if img is None:
+                        raise gr.Error("Fournissez une image.")
+                    if not point:
+                        raise gr.Error("Cliquez d'abord sur un objet dans l'image.")
+                    logs: list[str] = []
+                    progress(0.1, desc="Segmentation…")
+                    try:
+                        out = tools.sam_segment(img, point[0], point[1],
+                                                log=logs.append)
+                    except Exception as exc:  # noqa: BLE001
+                        logs.append(f"\n[ERREUR] {exc}")
+                        return None, "\n".join(logs)
+                    progress(1.0, desc="Terminé")
+                    return str(out), "\n".join(logs)
+
+                s_run.click(do_sam, inputs=[s_image, s_point],
+                            outputs=[s_result, s_log])

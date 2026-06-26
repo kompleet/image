@@ -20,6 +20,8 @@ from .. import hardware, settings
 TOOLS_DIR = settings.ROOT / "tools_repo"
 DEPTH_MODEL_DIR = TOOLS_DIR / "depth" / "model"
 BG_MODEL_DIR = TOOLS_DIR / "bg" / "model"
+SAM_MODEL_DIR = TOOLS_DIR / "sam" / "model"
+UPSCALE_DIR = TOOLS_DIR / "upscale"
 
 _IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -63,6 +65,19 @@ def bg_is_installed() -> bool:
     return _model_present(BG_MODEL_DIR)
 
 
+def sam_is_installed() -> bool:
+    return _model_present(SAM_MODEL_DIR)
+
+
+def upscale_is_installed() -> bool:
+    base = UPSCALE_DIR / "sd_xl_base_1.0.safetensors"
+    cn = UPSCALE_DIR / "controlnet"
+    vae = UPSCALE_DIR / "vae"
+    return (base.is_file()
+            and cn.is_dir() and any(cn.glob("*.safetensors"))
+            and vae.is_dir() and any(vae.glob("*.safetensors")))
+
+
 def _install_stream(tool: str):
     """Installe un outil (depth|bg) en streamant le journal (pour l'UI)."""
     setup = settings.ROOT / "scripts" / "setup_tools.py"
@@ -89,6 +104,14 @@ def install_depth_stream():
 
 def install_bg_stream():
     yield from _install_stream("bg")
+
+
+def install_sam_stream():
+    yield from _install_stream("sam")
+
+
+def install_upscale_stream():
+    yield from _install_stream("upscale")
 
 
 def _gpu_index() -> int | None:
@@ -175,3 +198,44 @@ def bg_remove(image, log: Callable[[str], None] | None = None) -> Path:
            "--input", str(src), "--output-dir", str(out_dir)]
     _run_tool(cmd, log, "La suppression d'arrière-plan a échoué (voir le journal).")
     return _collect(out_dir, "nobg", stamp)
+
+
+def sam_segment(image, x: int, y: int,
+                log: Callable[[str], None] | None = None) -> Path:
+    """Segment Anything : extrait l'objet au point (x, y) -> PNG transparent."""
+    if not sam_is_installed():
+        raise ToolError("Segment Anything n'est pas installé "
+                        "(bouton « Installer » du Toolkit).")
+    src = _to_src(image, "sam")
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = settings.TMP_DIR / f"sam_out_{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runner = settings.ROOT / "scripts" / "tools" / "run_sam.py"
+    cmd = [sys.executable, str(runner), "--model-dir", str(SAM_MODEL_DIR),
+           "--input", str(src), "--output-dir", str(out_dir),
+           "--x", str(int(x)), "--y", str(int(y))]
+    _run_tool(cmd, log, "La segmentation a échoué (voir le journal).")
+    return _collect(out_dir, "sam", stamp)
+
+
+def creative_upscale(image, scale: int = 2, prompt: str = "",
+                     creativity: float = 0.35, cn_scale: float = 0.6,
+                     log: Callable[[str], None] | None = None) -> Path:
+    """Upscale créatif SDXL + ControlNet Tile (façon Magnific), par tuiles."""
+    if not upscale_is_installed():
+        raise ToolError("L'upscale SDXL n'est pas installé "
+                        "(bouton « Installer » de l'onglet Upscale).")
+    src = _to_src(image, "creative")
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = settings.TMP_DIR / f"creative_out_{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runner = settings.ROOT / "scripts" / "tools" / "run_creative_upscale.py"
+    cmd = [sys.executable, str(runner),
+           "--base-model", str(UPSCALE_DIR / "sd_xl_base_1.0.safetensors"),
+           "--controlnet", str(UPSCALE_DIR / "controlnet"),
+           "--vae", str(UPSCALE_DIR / "vae"),
+           "--input", str(src), "--output-dir", str(out_dir),
+           "--scale", str(int(scale)), "--creativity", str(float(creativity)),
+           "--cn-scale", str(float(cn_scale)), "--prompt", prompt or ""]
+    _run_tool(cmd, log, "L'upscale SDXL a échoué (voir le journal).")
+    return _collect(out_dir, "creative", stamp)
