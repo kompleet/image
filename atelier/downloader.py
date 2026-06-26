@@ -87,6 +87,16 @@ def download_component(comp: Component,
             f"« {comp.requested()} » ni à « {comp.base_glob()} ».\n"
             f"    Fichiers disponibles dans le dépôt :{listing}")
 
+    # Transparence : si le quant exact demandé n'existe pas dans le dépôt, on a
+    # pris le plus proche EN DESSOUS (repli sûr). On le dit clairement.
+    if log and comp.token == "{quant}" and comp.quant:
+        got = quant.find_quant(Path(chosen).name)
+        if got and got != comp.quant:
+            sense = "≤" if quant._idx(got) is not None and quant._idx(comp.quant) \
+                is not None and quant._idx(got) <= quant._idx(comp.quant) else "≥"
+            log(f"  ⚠️ {comp.quant} indisponible dans {comp.repo} → {got} "
+                f"(repli, quant {sense} le plus proche disponible)")
+
     local_dir = settings.model_repo_dir(comp.repo)
     dest = local_dir / chosen
     if dest.is_file():
