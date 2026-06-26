@@ -250,4 +250,104 @@ def pid_upscale(image, prompt: str = "", target: int | None = None,
     return res[0]
 
 
+def _feather_mask(h: int, w: int, fade: int):
+    import numpy as np
+    fy = np.ones(h, np.float32)
+    fx = np.ones(w, np.float32)
+    f = max(1, min(fade, h // 2, w // 2))
+    ramp = 0.5 - 0.5 * np.cos(np.linspace(0.0, np.pi, f, dtype=np.float32))
+    fy[:f] = ramp; fy[-f:] = ramp[::-1]
+    fx[:f] = ramp; fx[-f:] = ramp[::-1]
+    return (fy[:, None] * fx[None, :])[:, :, None]
+
+
+def klein_tiled_upscale(image, scale: int, prompt: str = "", steps: int = 4,
+                        log: Callable[[str], None] | None = None,
+                        tile: int = 1024, overlap: int = 192):
+    """Upscale créatif 100% GPU via Flux.2 Klein (sd.cpp) — façon KleinTiledUpscaler.
+
+    Pré-agrandit (Lanczos + léger affinage), puis raffine PAR TUILES en mode
+    ÉDITION Klein (-r) avec un prompt de détail, et recolle avec un fondu cosinus.
+    Aucun PyTorch : sd.cpp gère GPU + offload RAM. Petite cible -> une seule passe.
+    """
+    import time
+    import numpy as np
+    from PIL import Image, ImageFilter
+
+    settings.ensure_dirs()
+    im = Image.open(image).convert("RGB") if isinstance(image, (str, Path)) \
+        else image.convert("RGB")
+    tw = max(512, int(round(im.width * scale / 16)) * 16)
+    th = max(512, int(round(im.height * scale / 16)) * 16)
+    cap = 4096
+    if max(tw, th) > cap:
+        r = cap / max(tw, th)
+        tw = max(512, int(round(tw * r / 16)) * 16)
+        th = max(512, int(round(th * r / 16)) * 16)
+        if log:
+            log(f"Cible plafonnée à {tw}x{th} (max {cap}px).")
+    if log:
+        log(f"Pré-agrandissement {im.width}x{im.height} -> {tw}x{th} (Lanczos)…")
+    base = im.resize((tw, th), Image.LANCZOS).filter(
+        ImageFilter.UnsharpMask(radius=2, percent=90, threshold=2))
+
+    p = prompt or ("high quality, sharp focus, fine intricate details, "
+                   "crisp textures, photorealistic")
+    common = dict(model_id="flux2-klein-9b", prompt=p, negative="",
+                  steps=int(steps), cfg_scale=1.0, sampler="euler",
+                  schedule="simple", seed=-1, batch_count=1, save_prompt=False)
+
+    def _sharpen(img):
+        return img.filter(ImageFilter.UnsharpMask(radius=1.2, percent=50, threshold=2))
+
+    # Petite cible -> une seule passe (édition Klein, pas de tuiles).
+    if max(tw, th) <= tile:
+        bp = settings.TMP_DIR / "klein_up.png"
+        base.save(bp)
+        if log:
+            log(f"Raffinage Klein (1 passe, {steps} pas)…")
+        outs = generate(width=tw, height=th, ref_image=bp, log=log, **common)
+        if not outs:
+            raise sdcpp.EngineError("Le raffinage Klein n'a produit aucune image.")
+        out = settings.OUTPUT_DIR / f"klein-up-{time.strftime('%Y%m%d-%H%M%S')}.png"
+        _sharpen(Image.open(outs[0]).convert("RGB")).save(out)
+        return out
+
+    # Grande cible -> tuiles + fondu (le modèle se recharge à chaque tuile : long).
+    t = max(512, (tile // 16) * 16)
+    step = max(64, t - overlap)
+    ys = list(range(0, max(1, th), step))
+    xs = list(range(0, max(1, tw), step))
+    total = len(ys) * len(xs)
+    if log:
+        log(f"Raffinage Klein par tuiles : {total} tuiles de {t}px "
+            "(le modèle se recharge par tuile — c'est long).")
+    acc = np.zeros((th, tw, 3), np.float32)
+    wsum = np.zeros((th, tw, 1), np.float32)
+    n = 0
+    for y in ys:
+        for x in xs:
+            y2, x2 = min(y + t, th), min(x + t, tw)
+            y1, x1 = max(0, y2 - t), max(0, x2 - t)
+            tp = settings.TMP_DIR / "klein_tile.png"
+            base.crop((x1, y1, x2, y2)).save(tp)
+            n += 1
+            if log:
+                log(f"  tuile {n}/{total}…")
+            outs = generate(width=x2 - x1, height=y2 - y1, ref_image=tp, **common)
+            if not outs:
+                raise sdcpp.EngineError("Une tuile Klein n'a produit aucune image.")
+            res = Image.open(outs[0]).convert("RGB").resize((x2 - x1, y2 - y1))
+            arr = np.asarray(res, np.float32)
+            mask = _feather_mask(y2 - y1, x2 - x1, overlap)
+            acc[y1:y2, x1:x2] += arr * mask
+            wsum[y1:y2, x1:x2] += mask
+    final = (acc / np.clip(wsum, 1e-6, None)).clip(0, 255).astype("uint8")
+    out = settings.OUTPUT_DIR / f"klein-up-{time.strftime('%Y%m%d-%H%M%S')}.png"
+    _sharpen(Image.fromarray(final)).save(out)
+    if log:
+        log(f"Image finale : {out}")
+    return out
+
+
 

@@ -128,12 +128,14 @@ def build_generative_tab(model_id: str, title: str,
                         lora1 = gr.Dropdown(label="LoRA 1",
                                             choices=gen_engine.list_loras(),
                                             value=None, allow_custom_value=False)
-                        lora1_w = gr.Slider(0.0, 1.5, value=0.8, step=0.05, label="Poids")
+                        lora1_w = gr.Slider(0.0, 5000.0, value=0.8, step=0.05,
+                                            label="Poids")
                     with gr.Row():
                         lora2 = gr.Dropdown(label="LoRA 2",
                                             choices=gen_engine.list_loras(),
                                             value=None, allow_custom_value=False)
-                        lora2_w = gr.Slider(0.0, 1.5, value=0.8, step=0.05, label="Poids")
+                        lora2_w = gr.Slider(0.0, 5000.0, value=0.8, step=0.05,
+                                            label="Poids")
                     with gr.Row():
                         refresh_lora = gr.Button("↻ Rafraîchir la liste", size="sm")
                         clear_lora = gr.Button("✖ Vider les LoRA", size="sm")

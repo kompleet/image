@@ -84,9 +84,10 @@ sélectionnez-les (jusqu'à 2) avec leur poids dans l'onglet Génération. La sy
   en **4 pas, 100% GPU, sans PyTorch ni tuiles**. Rapide. Modèles :
   [`Comfy-Org/PixelDiT`](https://huggingface.co/Comfy-Org/PixelDiT) (décodeur +
   Gemma-2-2B) + VAE FLUX.1. (doc : `leejet/stable-diffusion.cpp` → `docs/pid.md`)
-- **🎨 Créatif (SDXL + ControlNet Tile)** — façon Magnific : ré-invente le détail
-  **par tuiles** (diffusers, ~9 Go, 100% GPU). Plus lent, plus « créatif ».
-  Curseurs *créativité* / *fidélité*. ×2 conseillé ; sortie plafonnée à 4096 px.
+- **🟣 Créatif (Flux.2 Klein tuilé)** — façon Magnific, **100% sd.cpp/GPU** (pas
+  de PyTorch) : ré-invente le détail **par tuiles** via Flux.2 Klein (édition).
+  Facteur libre. Plus lent (le modèle se recharge à chaque tuile). Utilise le
+  modèle Flux.2 Klein déjà téléchargé — rien à installer en plus.
 
 ### Toolkit (onglet 🧰)
 Outils PyTorch installables en 1 clic (modèles téléchargés depuis Hugging Face) :
