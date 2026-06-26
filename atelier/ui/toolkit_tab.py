@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import gradio as gr
 
-from .. import downloader, registry
+from .. import downloader, registry, settings
 from ..engine import generate as gen_engine
 from ..engine import tools
 
@@ -241,3 +241,140 @@ def build_toolkit_tab(tab_id="toolkit"):
                                     outputs=[u_result, u_log])
                 u_stop.click(lambda: gen_engine.cancel(), outputs=None,
                              cancels=[u_evt])
+
+            # ---------- Upscale créatif tuilé (SDXL, façon Magnific) ----------
+            with gr.Tab("✨ Upscale créatif (SDXL)"):
+                gr.Markdown(
+                    "Upscale **créatif** « Ultimate SD Upscale » : pré-agrandit "
+                    "puis **raffine tuile par tuile** en SDXL img2img à faible "
+                    "débruitage (modèle **résident** → tuiles rapides, fondu par "
+                    "recouvrement). Invente du détail fin façon Magnific. "
+                    "**100% GPU** (PyTorch).")
+                _installer_block(
+                    "Upscale créatif SDXL",
+                    "PyTorch + diffusers (~7 Go : SDXL base + VAE fp16-fix). "
+                    "Modèle résident sur le GPU. Aucune commande à taper.",
+                    tools.install_upscale_stream, tools.upscale_is_installed())
+
+                with gr.Row():
+                    with gr.Column(scale=3):
+                        c_image = gr.Image(label="Image à agrandir", type="pil")
+                        c_prompt = gr.Textbox(
+                            label="Prompt (optionnel — guide le détail)", lines=2,
+                            placeholder="highly detailed, sharp focus, "
+                                        "intricate textures")
+                        c_scale = gr.Slider(1.5, 4.0, value=2.0, step=0.5,
+                                            label="Facteur d'agrandissement")
+                        c_denoise = gr.Slider(
+                            0.15, 0.6, value=0.35, step=0.05,
+                            label="Créativité (débruitage — ↑ = détail inventé)")
+                        with gr.Row():
+                            c_steps = gr.Slider(10, 40, value=24, step=1,
+                                                label="Pas / tuile")
+                            c_cfg = gr.Slider(1.0, 12.0, value=6.0, step=0.5,
+                                              label="CFG")
+                        c_tile = gr.Slider(640, 1280, value=1024, step=64,
+                                           label="Taille de tuile")
+                        with gr.Row():
+                            c_run = gr.Button("✨ Upscaler", variant="primary",
+                                              size="lg", scale=2)
+                            c_stop = gr.Button("⏹️ Annuler", variant="stop",
+                                               size="sm")
+                    with gr.Column(scale=4):
+                        c_result = gr.Image(
+                            label="Aperçu temps réel (pleine résolution dans "
+                                  "outputs/)", height=520, format="png",
+                            show_download_button=True)
+                        c_log = gr.Textbox(label="Journal", lines=12,
+                                           autoscroll=True, elem_classes="log-box")
+
+                def do_creative(img, prompt, scale, denoise, steps, cfg, tile,
+                                progress=gr.Progress()):
+                    import queue
+                    import threading
+                    import time
+                    from PIL import Image as _PILImage
+
+                    if img is None:
+                        raise gr.Error("Fournissez une image.")
+                    if not tools.upscale_is_installed():
+                        raise gr.Error("Installez d'abord l'upscale créatif SDXL "
+                                       "(accordéon ci-dessus).")
+                    settings.ensure_dirs()
+                    preview_path = (settings.TMP_DIR /
+                                    f"usdu_preview_{int(time.time()*1000)}.png")
+                    try:
+                        preview_path.unlink()
+                    except OSError:
+                        pass
+                    q: "queue.Queue[str | None]" = queue.Queue()
+                    state: dict = {}
+
+                    def worker():
+                        try:
+                            out = tools.ultimate_upscale(
+                                img, scale=float(scale), prompt=prompt or "",
+                                denoise=float(denoise), steps=int(steps),
+                                cfg=float(cfg), tile=int(tile),
+                                preview_path=preview_path, log=q.put)
+                            state["out"] = str(out)
+                        except Exception as exc:  # noqa: BLE001
+                            state["err"] = str(exc)
+                        finally:
+                            q.put(None)
+
+                    threading.Thread(target=worker, daemon=True).start()
+                    logs: list[str] = []
+                    last_mtime = None
+                    last_emit = 0.0
+                    progress(0.05, desc="Upscale créatif…")
+                    while True:
+                        try:
+                            line = q.get(timeout=0.3)
+                        except queue.Empty:
+                            line = ""
+                        if line is None:
+                            break
+                        if line:
+                            logs.append(line)
+                        prev = gr.update()
+                        new_prev = False
+                        if preview_path.exists():
+                            try:
+                                mt = preview_path.stat().st_mtime
+                                if mt != last_mtime:
+                                    with _PILImage.open(preview_path) as _p:
+                                        prev = _p.copy()
+                                    last_mtime = mt
+                                    new_prev = True
+                            except (OSError, ValueError):
+                                pass
+                        now = time.time()
+                        if new_prev or (line and now - last_emit >= 0.5):
+                            last_emit = now
+                            yield prev, "\n".join(logs[-400:])
+
+                    if "err" in state:
+                        logs.append(f"\n[ERREUR] {state['err']}")
+                        yield gr.update(), "\n".join(logs)
+                        return
+                    progress(1.0, desc="Terminé")
+                    out = state.get("out")
+                    try:
+                        im = _PILImage.open(out)
+                        logs.append(f"\n✅ Image pleine résolution "
+                                    f"({im.width}x{im.height}) : {out}")
+                        disp = im
+                        if max(im.size) > 1600:
+                            r = 1600 / max(im.size)
+                            disp = im.resize((int(im.width * r), int(im.height * r)))
+                        yield disp, "\n".join(logs)
+                    except Exception:  # noqa: BLE001
+                        yield (str(out) if out else gr.update()), "\n".join(logs)
+
+                c_evt = c_run.click(
+                    do_creative,
+                    inputs=[c_image, c_prompt, c_scale, c_denoise, c_steps,
+                            c_cfg, c_tile],
+                    outputs=[c_result, c_log])
+                c_stop.click(lambda: tools.cancel(), outputs=None, cancels=[c_evt])

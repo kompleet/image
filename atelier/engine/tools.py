@@ -22,6 +22,7 @@ DEPTH_MODEL_DIR = TOOLS_DIR / "depth" / "model"
 BG_MODEL_DIR = TOOLS_DIR / "bg" / "model"
 SAM_MODEL_DIR = TOOLS_DIR / "sam" / "model"
 ENHANCE_MODEL_DIR = TOOLS_DIR / "enhance" / "model"
+UPSCALE_DIR = TOOLS_DIR / "upscale"
 
 _IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -73,6 +74,12 @@ def enhance_is_installed() -> bool:
     return _model_present(ENHANCE_MODEL_DIR)
 
 
+def upscale_is_installed() -> bool:
+    base = UPSCALE_DIR / "sd_xl_base_1.0.safetensors"
+    vae = UPSCALE_DIR / "vae"
+    return base.is_file() and vae.is_dir() and any(vae.glob("*.safetensors"))
+
+
 def _install_stream(tool: str):
     """Installe un outil (depth|bg) en streamant le journal (pour l'UI)."""
     setup = settings.ROOT / "scripts" / "setup_tools.py"
@@ -107,6 +114,10 @@ def install_sam_stream():
 
 def install_enhance_stream():
     yield from _install_stream("enhance")
+
+
+def install_upscale_stream():
+    yield from _install_stream("upscale")
 
 
 def _gpu_index() -> int | None:
@@ -239,3 +250,38 @@ def enhance_prompt(prompt: str,
     if not text:
         raise ToolError("L'améliorateur n'a renvoyé aucun texte (voir le journal).")
     return text
+
+
+def ultimate_upscale(image, scale: float = 2.0, prompt: str = "",
+                     denoise: float = 0.35, steps: int = 24, cfg: float = 6.0,
+                     tile: int = 1024, overlap: int = 128,
+                     preview_path: Path | None = None,
+                     log: Callable[[str], None] | None = None) -> Path:
+    """Upscale créatif tuilé « Ultimate SD Upscale » (SDXL img2img résident).
+
+    Pré-agrandit puis raffine tuile par tuile à faible débruitage (fondu par
+    recouvrement). Modèle résident → tuiles rapides. 100% GPU (PyTorch)."""
+    if not upscale_is_installed():
+        raise ToolError("L'upscale créatif SDXL n'est pas installé "
+                        "(bouton « Installer » de l'onglet Toolkit → Upscale).")
+    src = _to_src(image, "usdu")
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    out_dir = settings.TMP_DIR / f"usdu_out_{stamp}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    runner = settings.ROOT / "scripts" / "tools" / "run_ultimate_upscale.py"
+    cmd = [sys.executable, str(runner),
+           "--base-model", str(UPSCALE_DIR / "sd_xl_base_1.0.safetensors"),
+           "--vae", str(UPSCALE_DIR / "vae"),
+           "--input", str(src), "--output-dir", str(out_dir),
+           "--scale", str(float(scale)), "--denoise", str(float(denoise)),
+           "--steps", str(int(steps)), "--cfg", str(float(cfg)),
+           "--tile", str(int(tile)), "--overlap", str(int(overlap)),
+           "--prompt", prompt or ""]
+    if preview_path:
+        cmd += ["--preview-path", str(preview_path)]
+    # VRAM serrée (< 12 Go) → offload CPU du modèle pour éviter l'OOM.
+    prof = hardware.auto_profile(settings.load_prefs().get("gpu_index"))
+    if prof.gpu and prof.gpu.vram_gb < 12:
+        cmd.append("--low-vram")
+    _run_tool(cmd, log, "L'upscale créatif SDXL a échoué (voir le journal).")
+    return _collect(out_dir, "usdu", stamp)

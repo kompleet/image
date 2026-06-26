@@ -117,6 +117,12 @@ Outils utilitaires installables en 1 clic (modèles téléchargés depuis Huggin
   sd.cpp** (`--mode upscale`) : déterministe, **100% GPU**, aucun PyTorch ni
   prompt. Choix parmi tous les modèles de `wbruna/upscalers-sdcpp-gguf`
   (×2/×4 selon le modèle ; « Répéter ×2 » enchaîne deux passes).
+- **Upscale créatif (SDXL)** — upscale **créatif** façon *Ultimate SD Upscale* /
+  Magnific : pré-agrandit puis **raffine tuile par tuile** en SDXL img2img à
+  faible débruitage (modèle **résident** sur le GPU → tuiles rapides, fondu par
+  recouvrement, **aperçu temps réel**). Invente du détail fin. PyTorch +
+  diffusers (~7 Go : SDXL base + VAE fp16-fix). Curseurs *créativité* / facteur /
+  taille de tuile. Sur < 12 Go : offload CPU automatique.
 
 ### Prompts sauvegardés
 Chaque image générée est accompagnée d'un `.txt` (style A1111) dans `outputs/`
@@ -188,8 +194,8 @@ atelier/
 scripts/
   get_sdcpp.py               # télécharge le binaire stable-diffusion.cpp
   _torch_setup.py            # helpers d'installation PyTorch CUDA (partagés)
-  setup_tools.py             # installe les outils PyTorch (depth, rembg, sam, enhance)
-  tools/run_*.py             # runners d'inférence (sous-process : depth, rembg, sam, enhance)
+  setup_tools.py             # installe les outils PyTorch (depth, rembg, sam, enhance, upscale)
+  tools/run_*.py             # runners d'inférence (sous-process : depth, rembg, sam, enhance, usdu)
 ```
 
 ---

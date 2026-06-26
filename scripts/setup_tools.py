@@ -6,6 +6,7 @@ Outils :
   bg      -> RMBG-1.4 : suppression d'arrière-plan (PNG transparent).
   sam     -> Segment Anything (facebook/sam-vit-base) : extraction d'objet au clic.
   enhance -> Qwen2.5-3B-Instruct : améliore un prompt brut (LLM).
+  upscale -> SDXL base + VAE fp16-fix : upscale créatif tuilé (Ultimate SD Upscale).
 
 Réutilise les helpers torch CUDA de _torch_setup (build adaptée au GPU,
 sans verrouiller de DLL). Lançable depuis l'interface ou en ligne :
@@ -38,6 +39,10 @@ BG_REPO = "briaai/RMBG-1.4"
 SAM_REPO = "facebook/sam-vit-base"
 # Améliorateur de prompt : petit LLM instruct (~6 Go fp16), tourne en sous-process.
 ENHANCE_REPO = "Qwen/Qwen2.5-3B-Instruct"
+# Upscale créatif tuilé : SDXL base (1 fichier) + VAE fp16-fix (img2img, pas de ControlNet).
+SDXL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
+SDXL_FILE = "sd_xl_base_1.0.safetensors"
+VAE_FIX_REPO = "madebyollin/sdxl-vae-fp16-fix"
 
 
 def install_depth():
@@ -92,9 +97,25 @@ def install_enhance():
     print("\n[OK] Améliorateur de prompt installé. Bouton « ✨ Améliorer ».")
 
 
+def install_upscale():
+    base = settings.ROOT / "tools_repo" / "upscale"
+    ensure_torch_cuda()
+    print("Installation de diffusers + accelerate…")
+    sh([sys.executable, "-m", "pip", "install", "diffusers>=0.30,<0.32",
+        "transformers>=4.45,<5", "accelerate", "safetensors", "omegaconf", "pillow"])
+    from huggingface_hub import hf_hub_download, snapshot_download
+    print(f"\nTéléchargement du checkpoint SDXL ({SDXL_REPO}/{SDXL_FILE}, ~6,6 Go)…")
+    hf_hub_download(repo_id=SDXL_REPO, filename=SDXL_FILE, local_dir=str(base))
+    print(f"\nTéléchargement de la VAE fp16-fix ({VAE_FIX_REPO})…")
+    snapshot_download(repo_id=VAE_FIX_REPO, local_dir=str(base / "vae"),
+                      allow_patterns=["*.json", "*.safetensors"])
+    pin_numpy()
+    print("\n[OK] Upscale créatif SDXL installé (onglet Toolkit → Upscale créatif).")
+
+
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("tool", choices=["depth", "bg", "sam", "enhance"])
+    ap.add_argument("tool", choices=["depth", "bg", "sam", "enhance", "upscale"])
     args = ap.parse_args()
     settings.configure_hf_env()
     if args.tool == "depth":
@@ -105,6 +126,8 @@ def main():
         install_sam()
     elif args.tool == "enhance":
         install_enhance()
+    elif args.tool == "upscale":
+        install_upscale()
 
 
 if __name__ == "__main__":
