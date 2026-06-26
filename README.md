@@ -12,9 +12,11 @@ Aucun ComfyUI, aucune usine à gaz : une interface web claire.
 |---|---|
 | 🟣 **Flux.2 Klein** | rapide (4 pas) · text-to-image & édition d'image, presets, styles, LoRA |
 | 🎨 **Krea 2** | qualité · text-to-image (GGUF, encodeur Qwen3-VL, VAE WAN 2.1) |
-| 📚 **Bibliothèque** | catalogue, recommandations selon le matériel, téléchargement à la demande |
-| ✨ **Upscale créatif** | façon Magnific : ré-invente le détail (SDXL + ControlNet Tile, par tuiles) |
-| 🧰 **Toolkit** | carte de profondeur · suppression d'arrière-plan (PNG transparent) |
+| 🎨 **Krea 2 / ⚡ Turbo** | qualité / rapide (GGUF, encodeur Qwen3-VL, VAE WAN 2.1) |
+| 📚 **Catalogue de modèles** | recommandations selon le matériel, téléchargement / suppression à la demande |
+| ✨ **Upscale** | PiD (sd.cpp) · SDXL+ControlNet Tile (PyTorch) · Flux Klein tuilé |
+| 🧰 **Toolkit** | profondeur · suppression d'arrière-plan · détourage au clic (SAM) |
+| 🎬 **Vidéo (LTX-2.3)** | texte→vidéo, image→vidéo, début→fin (sd.cpp, ⚠️ 22B très lourd) |
 | ⚙️ **Réglages** | matériel détecté, quantification, optimisations (auto/manuel) |
 
 ---

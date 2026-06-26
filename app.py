@@ -46,6 +46,7 @@ from atelier.ui.library_tab import build_library_tab
 from atelier.ui.settings_tab import build_settings_tab
 from atelier.ui.theme import CSS, theme
 from atelier.ui.toolkit_tab import build_toolkit_tab
+from atelier.ui.video_tab import build_video_tab
 
 # Force le thème clair quel que soit le réglage clair/sombre du navigateur/OS.
 _HEAD = (
@@ -90,6 +91,7 @@ def build_app() -> gr.Blocks:
             build_library_tab()
             creative_input = build_creative_tab(tab_id="creative")
             build_toolkit_tab()
+            build_video_tab()
             build_settings_tab()
 
         # Quand on arrive sur un onglet : si une image est en attente, la charger

@@ -121,6 +121,33 @@ def pid_ready() -> bool:
 
 
 # --------------------------------------------------------------------------- #
+#  LTX-2.3 (vidéo, natif sd.cpp)
+# --------------------------------------------------------------------------- #
+def ltx_config() -> dict[str, Any]:
+    return _catalog().get("ltx", {}) or {}
+
+
+def ltx_components(prefs: dict[str, Any] | None = None) -> list[Component]:
+    prefs = prefs or settings.load_prefs()
+    q_diff, q_enc = effective_quants(prefs)
+    out: list[Component] = []
+    for role, spec in (ltx_config().get("sources") or {}).items():
+        t = spec["match"]
+        q = q_enc if "{enc_quant}" in t else (q_diff if "{quant}" in t else None)
+        out.append(Component(role, spec["repo"], t, q))
+    return out
+
+
+def ltx_paths(prefs: dict[str, Any] | None = None) -> dict[str, Path | None]:
+    return {c.role: resolve_component_path(c) for c in ltx_components(prefs)}
+
+
+def ltx_ready(prefs: dict[str, Any] | None = None) -> bool:
+    comps = ltx_components(prefs)
+    return bool(comps) and all(resolve_component_path(c) is not None for c in comps)
+
+
+# --------------------------------------------------------------------------- #
 #  Résolution des chemins locaux + statut
 # --------------------------------------------------------------------------- #
 def _match(files: list[Path], repo_dir: Path, pattern: str) -> list[Path]:
