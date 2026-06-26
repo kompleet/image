@@ -37,7 +37,24 @@ def _patch_gradio_client() -> None:
         pass
 
 
+def _disable_brotli() -> None:
+    """Désactive la compression Brotli de Gradio : son middleware calcule mal le
+    Content-Length et casse le service des images (erreurs « Too much/little data
+    for declared Content-Length »), ce qui faisait planter l'upscale ET l'aperçu
+    temps réel. On le rend transparent (compression inutile en local)."""
+    try:
+        import gradio.brotli_middleware as bm
+
+        async def _passthrough(self, scope, receive, send):
+            await self.app(scope, receive, send)
+
+        bm.BrotliMiddleware.__call__ = _passthrough
+    except Exception:  # noqa: BLE001
+        pass
+
+
 _patch_gradio_client()
+_disable_brotli()
 
 from atelier import APP_NAME, __version__, hardware, net, settings
 from atelier.ui.creative_tab import build_creative_tab

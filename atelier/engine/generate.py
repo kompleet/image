@@ -191,6 +191,7 @@ def generate(
 
 
 def pid_upscale(image, prompt: str = "", target: int | None = None,
+                preview_path: Path | None = None,
                 log: Callable[[str], None] | None = None):
     """Upscale rapide via PiD (décodeur de diffusion en espace pixel, natif
     sd.cpp) : encode l'image puis décode/agrandit vers ~2K en 4 pas, sur le GPU.
@@ -239,7 +240,7 @@ def pid_upscale(image, prompt: str = "", target: int | None = None,
         ref_image=ref, prompt=prompt or "high quality, sharp, highly detailed",
         steps=int(cfg.get("steps", 4)), cfg_scale=1.0, sampler="euler",
         width=w, height=h, seed=-1, batch_count=1,
-        flags=flags, gpu_index=gpu_index,
+        preview_path=preview_path, flags=flags, gpu_index=gpu_index,
     )
     out = sdcpp.unique_output("pid")
     cmd = sdcpp.build_gen_cmd(sd_cli, req, out)
@@ -305,6 +306,7 @@ def _feather_mask(h: int, w: int, fade: int):
 
 
 def klein_tiled_upscale(image, scale: int, prompt: str = "", steps: int = 4,
+                        preview_path: Path | None = None,
                         log: Callable[[str], None] | None = None,
                         tile: int = 1024, overlap: int = 192):
     """Upscale créatif 100% GPU via Flux.2 Klein (sd.cpp) — façon KleinTiledUpscaler.
@@ -385,6 +387,16 @@ def klein_tiled_upscale(image, scale: int, prompt: str = "", steps: int = 4,
             mask = _feather_mask(y2 - y1, x2 - x1, overlap)
             acc[y1:y2, x1:x2] += arr * mask
             wsum[y1:y2, x1:x2] += mask
+            if preview_path:   # aperçu : image assemblée jusqu'ici
+                cur = (acc / np.clip(wsum, 1e-6, None)).clip(0, 255).astype("uint8")
+                pv = Image.fromarray(cur)
+                if max(pv.size) > 1280:
+                    r = 1280 / max(pv.size)
+                    pv = pv.resize((int(pv.width * r), int(pv.height * r)))
+                try:
+                    pv.save(preview_path)
+                except OSError:
+                    pass
     final = (acc / np.clip(wsum, 1e-6, None)).clip(0, 255).astype("uint8")
     out = settings.OUTPUT_DIR / f"klein-up-{time.strftime('%Y%m%d-%H%M%S')}.png"
     _sharpen(Image.fromarray(final)).save(out)

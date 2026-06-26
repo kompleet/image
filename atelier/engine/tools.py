@@ -220,6 +220,7 @@ def sam_segment(image, x: int, y: int,
 
 def creative_upscale(image, scale: int = 2, prompt: str = "",
                      creativity: float = 0.35, cn_scale: float = 0.6,
+                     preview_path: Path | None = None,
                      log: Callable[[str], None] | None = None) -> Path:
     """Upscale créatif SDXL + ControlNet Tile (façon Magnific), par tuiles."""
     if not upscale_is_installed():
@@ -237,5 +238,7 @@ def creative_upscale(image, scale: int = 2, prompt: str = "",
            "--input", str(src), "--output-dir", str(out_dir),
            "--scale", str(int(scale)), "--creativity", str(float(creativity)),
            "--cn-scale", str(float(cn_scale)), "--prompt", prompt or ""]
+    if preview_path:
+        cmd += ["--preview-path", str(preview_path)]
     _run_tool(cmd, log, "L'upscale SDXL a échoué (voir le journal).")
     return _collect(out_dir, "creative", stamp)

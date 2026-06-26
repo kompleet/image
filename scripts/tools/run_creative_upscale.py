@@ -43,6 +43,7 @@ def main():
     ap.add_argument("--prompt", default="")
     ap.add_argument("--tile", type=int, default=1024)
     ap.add_argument("--overlap", type=int, default=160)
+    ap.add_argument("--preview-path", default="")   # aperçu temps réel (par tuile)
     args = ap.parse_args()
 
     import numpy as np
@@ -133,6 +134,20 @@ def main():
     print(f"[upscale] {total_tiles} tuiles de {t}px…", flush=True)
     acc = np.zeros((th, tw, 3), np.float32)
     wsum = np.zeros((th, tw, 1), np.float32)
+
+    def _write_preview():
+        if not args.preview_path:
+            return
+        cur = (acc / np.clip(wsum, 1e-6, None)).clip(0, 255).astype("uint8")
+        prev = Image.fromarray(cur)
+        if max(prev.size) > 1280:  # aperçu léger pour rester fluide
+            r = 1280 / max(prev.size)
+            prev = prev.resize((int(prev.width * r), int(prev.height * r)))
+        try:
+            prev.save(args.preview_path)
+        except OSError:
+            pass
+
     n = 0
     for y in ys:
         for x in xs:
@@ -145,6 +160,7 @@ def main():
             mask = _feather(y2 - y1, x2 - x1, args.overlap, np)
             acc[y1:y2, x1:x2] += arr * mask
             wsum[y1:y2, x1:x2] += mask
+            _write_preview()   # aperçu : image assemblée jusqu'ici
     final = (acc / np.clip(wsum, 1e-6, None)).clip(0, 255).astype("uint8")
     _sharpen(Image.fromarray(final)).save(dest)
     print(f"[upscale] image écrite : {dest}", flush=True)

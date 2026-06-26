@@ -95,35 +95,87 @@ def build_creative_tab(tab_id="creative"):
 
         def do_upscale(method, image, prompt, scale, creativity, cn_scale, k_steps,
                        progress=gr.Progress()):
+            import queue
+            import threading
+            import time
+            from PIL import Image as _PILImage
+
             if image is None:
                 raise gr.Error("Fournissez une image.")
-            logs: list[str] = []
+            if method == "klein":
+                m = registry.get_base_model("flux2-klein-9b",
+                                            settings.load_prefs())
+                if m is None or not registry.model_is_ready(m):
+                    raise gr.Error("Flux.2 Klein n'est pas téléchargé "
+                                   "(onglet Catalogue de modèles).")
+
+            settings.ensure_dirs()
+            preview_path = settings.TMP_DIR / f"upscale_preview_{int(time.time()*1000)}.png"
             try:
-                if method == "pid":
-                    progress(0.1, desc="PiD (GPU)…")
-                    out = gen_engine.pid_upscale(image, prompt=prompt or "",
-                                                 log=logs.append)
-                elif method == "sdxl":
-                    progress(0.05, desc="Upscale SDXL…")
-                    out = tools.creative_upscale(
-                        image, scale=int(scale), prompt=prompt or "",
-                        creativity=float(creativity), cn_scale=float(cn_scale),
-                        log=logs.append)
-                else:
-                    m = registry.get_base_model("flux2-klein-9b",
-                                                settings.load_prefs())
-                    if m is None or not registry.model_is_ready(m):
-                        raise gr.Error("Flux.2 Klein n'est pas téléchargé "
-                                       "(onglet Catalogue de modèles).")
-                    progress(0.05, desc="Upscale Klein tuilé…")
-                    out = gen_engine.klein_tiled_upscale(
-                        image, scale=int(scale), prompt=prompt or "",
-                        steps=int(k_steps), log=logs.append)
-            except Exception as exc:  # noqa: BLE001
-                logs.append(f"\n[ERREUR] {exc}")
-                return None, "\n".join(logs)
+                preview_path.unlink()
+            except OSError:
+                pass
+            q: "queue.Queue[str | None]" = queue.Queue()
+            state: dict = {}
+
+            def worker():
+                try:
+                    if method == "pid":
+                        out = gen_engine.pid_upscale(
+                            image, prompt=prompt or "",
+                            preview_path=preview_path, log=q.put)
+                    elif method == "sdxl":
+                        out = tools.creative_upscale(
+                            image, scale=int(scale), prompt=prompt or "",
+                            creativity=float(creativity), cn_scale=float(cn_scale),
+                            preview_path=preview_path, log=q.put)
+                    else:
+                        out = gen_engine.klein_tiled_upscale(
+                            image, scale=int(scale), prompt=prompt or "",
+                            steps=int(k_steps), preview_path=preview_path, log=q.put)
+                    state["out"] = str(out)
+                except Exception as exc:  # noqa: BLE001
+                    state["err"] = str(exc)
+                finally:
+                    q.put(None)
+
+            threading.Thread(target=worker, daemon=True).start()
+            logs: list[str] = []
+            last_mtime = None
+            last_emit = 0.0
+            progress(0.05, desc="Upscale en cours…")
+            while True:
+                try:
+                    line = q.get(timeout=0.3)
+                except queue.Empty:
+                    line = ""
+                if line is None:
+                    break
+                if line:
+                    logs.append(line)
+                prev = gr.update()
+                new_prev = False
+                if preview_path.exists():
+                    try:
+                        mt = preview_path.stat().st_mtime
+                        if mt != last_mtime:
+                            with _PILImage.open(preview_path) as _p:
+                                prev = _p.copy()
+                            last_mtime = mt
+                            new_prev = True
+                    except (OSError, ValueError):
+                        pass
+                now = time.time()
+                if new_prev or (line and now - last_emit >= 0.5):
+                    last_emit = now
+                    yield prev, "\n".join(logs[-400:])
+
+            if "err" in state:
+                logs.append(f"\n[ERREUR] {state['err']}")
+                yield gr.update(), "\n".join(logs)
+                return
             progress(1.0, desc="Terminé")
-            from PIL import Image as _PILImage
+            out = state.get("out")
             try:
                 im = _PILImage.open(out)
                 logs.append(f"\n✅ Image pleine résolution ({im.width}x{im.height}) "
@@ -133,9 +185,9 @@ def build_creative_tab(tab_id="creative"):
                     r = 1600 / max(im.size)
                     disp = im.resize((max(1, int(im.width * r)),
                                       max(1, int(im.height * r))))
-                return disp, "\n".join(logs)
+                yield disp, "\n".join(logs)
             except Exception:  # noqa: BLE001
-                return str(out), "\n".join(logs)
+                yield (str(out) if out else gr.update()), "\n".join(logs)
 
         evt = run.click(
             do_upscale,
