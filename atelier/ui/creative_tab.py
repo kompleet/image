@@ -45,7 +45,7 @@ def build_creative_tab(tab_id="creative"):
 
         gr.Markdown(
             "<small>🟣 *Flux Klein* utilise le modèle **Flux.2 Klein 9B** : "
-            "téléchargez-le simplement dans l'onglet **Bibliothèque** (rien de "
+            "téléchargez-le simplement dans l'onglet **Catalogue de modèles** (rien de "
             "plus à installer).</small>")
 
         with gr.Row():
@@ -89,7 +89,7 @@ def build_creative_tab(tab_id="creative"):
                                                 settings.load_prefs())
                     if m is None or not registry.model_is_ready(m):
                         raise gr.Error("Flux.2 Klein n'est pas téléchargé "
-                                       "(onglet Bibliothèque).")
+                                       "(onglet Catalogue de modèles).")
                     progress(0.05, desc="Upscale Klein tuilé…")
                     out = gen_engine.klein_tiled_upscale(
                         image, scale=int(scale), prompt=prompt or "",

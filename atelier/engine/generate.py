@@ -141,7 +141,7 @@ def generate(
         if model_path is None or not Path(model_path).is_file():
             raise sdcpp.EngineError(
                 f"« {model.name} » : checkpoint manquant. Téléchargez-le "
-                "(onglet Bibliothèque) ou fournissez un fichier local.")
+                "(onglet Catalogue de modèles) ou fournissez un fichier local.")
     else:
         model_path = None
         diffusion = Path(diffusion_override) if diffusion_override else _component(model, "diffusion")
@@ -160,7 +160,7 @@ def generate(
         if absent:
             raise sdcpp.EngineError(
                 f"« {model.name} » : fichiers manquants ({', '.join(absent)}). "
-                "Téléchargez le modèle (onglet Bibliothèque) ou fournissez des "
+                "Téléchargez le modèle (onglet Catalogue de modèles) ou fournissez des "
                 "fichiers locaux valides.")
 
     flags, gpu_index = _resolved_flags(prefs)

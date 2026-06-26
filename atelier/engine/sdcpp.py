@@ -86,7 +86,7 @@ def _require(*paths: Path | None) -> None:
         if p is not None and not Path(p).is_file():
             raise EngineError(
                 f"Fichier requis introuvable : {p}\n"
-                "Téléchargez le modèle depuis l'onglet Bibliothèque.")
+                "Téléchargez le modèle depuis l'onglet Catalogue de modèles.")
 
 
 def build_gen_cmd(sd_cli: Path, req: GenRequest, output: Path) -> list[str]:

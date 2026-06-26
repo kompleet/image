@@ -70,7 +70,7 @@ def build_generative_tab(model_id: str, title: str,
         is_edit = bool(m) and m.family == "flux2"
         status = ("<span class='status-ok'>● modèle prêt</span>" if ready
                   else "<span class='status-missing'>○ à télécharger "
-                       "(onglet Bibliothèque)</span>")
+                       "(onglet Catalogue de modèles)</span>")
         _mode = "édition d'image" if is_edit else "image-to-image"
         gr.Markdown(f"### {title} — text-to-image & {_mode}  ·  {status}")
 

@@ -1,4 +1,4 @@
-"""Bibliothèque de modèles : chargement du catalogue, résolution des fichiers,
+"""Catalogue de modèles : chargement du catalogue, résolution des fichiers,
 statut de téléchargement, et recommandations selon le matériel.
 """
 from __future__ import annotations
@@ -168,6 +168,52 @@ def model_is_ready(model: BaseModel) -> bool:
 
 def missing_components(model: BaseModel) -> list[Component]:
     return [c for c in model.components if resolve_component_path(c) is None]
+
+
+def delete_model(model: BaseModel, prefs: dict[str, Any]) -> list[str]:
+    """Supprime les fichiers téléchargés de ce modèle, SANS toucher aux fichiers
+    partagés avec un autre modèle (encodeur/VAE communs) ni avec PiD.
+    Retourne la liste des fichiers supprimés."""
+    mine = {resolve_component_path(c) for c in model.components}
+    mine.discard(None)
+    # Fichiers utilisés par les AUTRES modèles + PiD : à préserver.
+    shared: set = set()
+    for other in load_base_models(prefs):
+        if other.id == model.id:
+            continue
+        for c in other.components:
+            p = resolve_component_path(c)
+            if p:
+                shared.add(p)
+    for c in pid_components():
+        p = resolve_component_path(c)
+        if p:
+            shared.add(p)
+
+    deleted: list[str] = []
+    repo_dirs: set[Path] = set()
+    for p in mine - shared:
+        try:
+            repo_dirs.add(p.parent)
+            p.unlink()
+            deleted.append(p.name)
+        except OSError:
+            pass
+    # Nettoie les dossiers devenus vides (y compris parents type split_files/).
+    for d in sorted(repo_dirs, key=lambda x: len(str(x)), reverse=True):
+        cur = d
+        while cur != settings.MODELS_DIR and cur.is_dir():
+            try:
+                next(cur.iterdir())
+                break  # pas vide
+            except StopIteration:
+                parent = cur.parent
+                try:
+                    cur.rmdir()
+                except OSError:
+                    break
+                cur = parent
+    return deleted
 
 
 # --------------------------------------------------------------------------- #

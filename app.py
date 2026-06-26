@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """GEN.Ai Image Workshop — studio d'inférence d'images en local (Gradio).
 
-Onglets : Génération (Flux.2 Klein 9B, GGUF) · Bibliothèque · Upscale créatif ·
+Onglets : Génération (Flux.2 Klein 9B, GGUF) · Catalogue de modèles · Upscale créatif ·
 Toolkit (profondeur, détourage) · Réglages.
 """
 from __future__ import annotations

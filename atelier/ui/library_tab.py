@@ -1,4 +1,4 @@
-"""Onglet Bibliothèque : catalogue des modèles, recommandations selon le
+"""Onglet Catalogue de modèles : catalogue des modèles, recommandations selon le
 matériel, téléchargement à la demande."""
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def _card_md(model: registry.BaseModel, recos: dict[str, list[str]]) -> str:
 
 
 def build_library_tab():
-    with gr.Tab("📚 Bibliothèque"):
+    with gr.Tab("📚 Catalogue de modèles"):
         gr.Markdown("### Modèles de base\n"
                     "Téléchargement à la demande. La quantification est choisie "
                     "automatiquement selon votre VRAM/RAM (modifiable dans Réglages).")
@@ -36,8 +36,9 @@ def build_library_tab():
             with gr.Row():
                 with gr.Column(scale=5):
                     card = gr.Markdown(_card_md(m, recos))
-                with gr.Column(scale=1, min_width=160):
-                    btn = gr.Button(f"⬇️ Télécharger", variant="primary")
+                with gr.Column(scale=1, min_width=170):
+                    btn = gr.Button("⬇️ Télécharger", variant="primary")
+                    del_btn = gr.Button("🗑️ Supprimer", size="sm")
             cards.append(card)
 
             def make_handler(model_id):
@@ -50,7 +51,20 @@ def build_library_tab():
                         yield "\n".join(lines)
                 return handler
 
+            def make_deleter(model_id):
+                def deleter():
+                    p = settings.load_prefs()
+                    model = registry.get_base_model(model_id, p)
+                    deleted = registry.delete_model(model, p)
+                    msg = (f"🗑️ « {model.name} » supprimé : "
+                           f"{len(deleted)} fichier(s) effacé(s)." if deleted
+                           else f"Rien à supprimer pour « {model.name} » "
+                                "(non installé ou fichiers partagés).")
+                    return _card_md(model, registry.recommend(p)), msg
+                return deleter
+
             btn.click(make_handler(m.id), outputs=[log])
+            del_btn.click(make_deleter(m.id), outputs=[card, log])
 
         refresh = gr.Button("↻ Rafraîchir l'état")
 
