@@ -63,22 +63,23 @@ def build_settings_tab():
 
         if len(_gpu_choices()) > 1:
             gr.Markdown(
-                "#### 🧮 Multi-GPU (2e carte, ex. 1080 Ti)\n"
-                "Déchargez les **outils PyTorch** (améliorateur de prompt, "
-                "profondeur, détourage, upscale SDXL) et/ou l'**encodeur de "
-                "texte** sur une 2e carte pour libérer le GPU de génération.")
+                "#### 🧮 Multi-GPU — carte secondaire dédiée au TEXTE\n"
+                "Faites tourner le **texte** (amélioration de prompt + encodage) "
+                "sur une 2e carte (ex. 1080 Ti). La **génération d'images** et "
+                "l'**upscale SDXL** restent **toujours** sur le GPU de génération "
+                "— jamais sur la carte secondaire.")
             with gr.Row():
                 tools_gpu = gr.Dropdown(
-                    label="GPU des outils PyTorch (enhancer, depth, SDXL…)",
+                    label="GPU pour l'améliorateur de prompt (texte)",
                     choices=[(t("Auto (même que génération)"), None)]
                             + _gpu_choices(),
-                    value=prefs.get("tools_gpu_index"))
+                    value=prefs.get("text_gpu_index"))
                 enc_gpu = gr.Dropdown(
-                    label="Encodeur de texte sur ce GPU (⚠️ expérimental)",
+                    label="GPU pour l'encodeur de texte (⚠️ expérimental)",
                     choices=[(t("Désactivé (normal)"), None)] + _gpu_choices(),
                     value=prefs.get("encoder_gpu_index"))
         else:
-            tools_gpu = gr.State(prefs.get("tools_gpu_index"))
+            tools_gpu = gr.State(prefs.get("text_gpu_index"))
             enc_gpu = gr.State(prefs.get("encoder_gpu_index"))
 
         gr.Markdown(
@@ -119,7 +120,7 @@ def build_settings_tab():
             p = settings.load_prefs()
             p["auto_optimize"] = bool(auto)
             p["gpu_index"] = gpu if gpu is not None else None
-            p["tools_gpu_index"] = tools_gpu
+            p["text_gpu_index"] = tools_gpu
             p["encoder_gpu_index"] = enc_gpu
             p["quant"] = None if quant == "auto" else quant
             p["enc_quant"] = None if enc_quant == "auto" else enc_quant

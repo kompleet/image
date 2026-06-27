@@ -472,19 +472,20 @@ _EN: dict[str, str] = {
     "Endpoint Hugging Face (miroir éventuel)":
         "Hugging Face endpoint (optional mirror)",
     "Langue de l'interface": "Interface language",
-    "#### 🧮 Multi-GPU (2e carte, ex. 1080 Ti)\n"
-    "Déchargez les **outils PyTorch** (améliorateur de prompt, "
-    "profondeur, détourage, upscale SDXL) et/ou l'**encodeur de "
-    "texte** sur une 2e carte pour libérer le GPU de génération.":
-        "#### 🧮 Multi-GPU (2nd card, e.g. 1080 Ti)\n"
-        "Offload the **PyTorch tools** (prompt enhancer, depth, cutout, SDXL "
-        "upscale) and/or the **text encoder** onto a 2nd card to free the "
-        "generation GPU.",
-    "GPU des outils PyTorch (enhancer, depth, SDXL…)":
-        "GPU for PyTorch tools (enhancer, depth, SDXL…)",
+    "#### 🧮 Multi-GPU — carte secondaire dédiée au TEXTE\n"
+    "Faites tourner le **texte** (amélioration de prompt + encodage) "
+    "sur une 2e carte (ex. 1080 Ti). La **génération d'images** et "
+    "l'**upscale SDXL** restent **toujours** sur le GPU de génération "
+    "— jamais sur la carte secondaire.":
+        "#### 🧮 Multi-GPU — secondary card dedicated to TEXT\n"
+        "Run **text** (prompt enhancement + encoding) on a 2nd card (e.g. "
+        "1080 Ti). **Image generation** and the **SDXL upscale** always stay "
+        "on the generation GPU — never on the secondary card.",
+    "GPU pour l'améliorateur de prompt (texte)":
+        "GPU for the prompt enhancer (text)",
     "Auto (même que génération)": "Auto (same as generation)",
-    "Encodeur de texte sur ce GPU (⚠️ expérimental)":
-        "Text encoder on this GPU (⚠️ experimental)",
+    "GPU pour l'encodeur de texte (⚠️ expérimental)":
+        "GPU for the text encoder (⚠️ experimental)",
     "Désactivé (normal)": "Disabled (normal)",
     "🌐 Langue / Language (redémarrage requis)":
         "🌐 Langue / Language (restart required)",

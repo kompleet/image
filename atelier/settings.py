@@ -25,9 +25,10 @@ PREFS_FILE = USERDATA_DIR / "preferences.json"
 DEFAULT_PREFS: dict[str, Any] = {
     "lang": "fr",               # langue de l'interface : "fr" | "en"
     "gpu_index": None,          # None = auto (meilleure carte détectée)
-    # GPU dédié aux outils PyTorch (enhancer, depth, bg, SAM, upscale SDXL).
-    # None = même GPU que la génération. Ex. : mettre la 1080 Ti ici.
-    "tools_gpu_index": None,
+    # GPU secondaire dédié au TEXTE (améliorateur de prompt). None = même GPU
+    # que la génération. Ex. : mettre la 1080 Ti ici. La génération d'images et
+    # l'upscale SDXL restent TOUJOURS sur le GPU de génération.
+    "text_gpu_index": None,
     # EXPÉRIMENTAL : GPU dédié à l'encodeur de texte dans sd.cpp (--backend te=).
     # None = comportement normal (encodeur sur le GPU principal / déchargé RAM).
     "encoder_gpu_index": None,

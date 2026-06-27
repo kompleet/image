@@ -126,16 +126,23 @@ def install_upscale_stream():
     yield from _install_stream("upscale")
 
 
-def _gpu_index() -> int | None:
-    """GPU sur lequel lancer les outils PyTorch. Priorité au GPU dédié aux
-    outils (ex. 1080 Ti), sinon le GPU de génération, sinon auto."""
+def _gen_gpu_index() -> int | None:
+    """GPU de GÉNÉRATION d'images (Flux/Krea, upscale SDXL, depth/bg/SAM).
+    Jamais le GPU secondaire dédié au texte."""
     prefs = settings.load_prefs()
-    if prefs.get("tools_gpu_index") is not None:
-        return prefs["tools_gpu_index"]
     if prefs.get("gpu_index") is not None:
         return prefs["gpu_index"]
     prof = hardware.auto_profile()
     return prof.gpu.index if prof.gpu else None
+
+
+def _text_gpu_index() -> int | None:
+    """GPU pour le TEXTE (améliorateur de prompt). GPU secondaire si défini
+    (ex. 1080 Ti), sinon le GPU de génération."""
+    prefs = settings.load_prefs()
+    if prefs.get("text_gpu_index") is not None:
+        return prefs["text_gpu_index"]
+    return _gen_gpu_index()
 
 
 def _to_src(image: Image.Image | str | Path, prefix: str) -> Path:
@@ -148,12 +155,11 @@ def _to_src(image: Image.Image | str | Path, prefix: str) -> Path:
 
 
 def _run_tool(cmd: list[str], log: Callable[[str], None] | None,
-              err_msg: str) -> None:
+              err_msg: str, gpu_index: int | None = None) -> None:
     global _CANCELLED
     env = dict(os.environ)
-    gi = _gpu_index()
-    if gi is not None:
-        env["CUDA_VISIBLE_DEVICES"] = str(gi)
+    if gpu_index is not None:
+        env["CUDA_VISIBLE_DEVICES"] = str(gpu_index)
     if log:
         log("$ " + " ".join(cmd))
     _CANCELLED = False
@@ -197,7 +203,8 @@ def depth_map(image, log: Callable[[str], None] | None = None) -> Path:
     runner = settings.ROOT / "scripts" / "tools" / "run_depth.py"
     cmd = [sys.executable, str(runner), "--model-dir", str(DEPTH_MODEL_DIR),
            "--input", str(src), "--output-dir", str(out_dir)]
-    _run_tool(cmd, log, "L'estimation de profondeur a échoué (voir le journal).")
+    _run_tool(cmd, log, "L'estimation de profondeur a échoué (voir le journal).",
+              gpu_index=_gen_gpu_index())
     return _collect(out_dir, "depth", stamp)
 
 
@@ -212,7 +219,8 @@ def bg_remove(image, log: Callable[[str], None] | None = None) -> Path:
     runner = settings.ROOT / "scripts" / "tools" / "run_rembg.py"
     cmd = [sys.executable, str(runner), "--model-dir", str(BG_MODEL_DIR),
            "--input", str(src), "--output-dir", str(out_dir)]
-    _run_tool(cmd, log, "La suppression d'arrière-plan a échoué (voir le journal).")
+    _run_tool(cmd, log, "La suppression d'arrière-plan a échoué (voir le journal).",
+              gpu_index=_gen_gpu_index())
     return _collect(out_dir, "nobg", stamp)
 
 
@@ -230,7 +238,8 @@ def sam_segment(image, x: int, y: int,
     cmd = [sys.executable, str(runner), "--model-dir", str(SAM_MODEL_DIR),
            "--input", str(src), "--output-dir", str(out_dir),
            "--x", str(int(x)), "--y", str(int(y))]
-    _run_tool(cmd, log, "La segmentation a échoué (voir le journal).")
+    _run_tool(cmd, log, "La segmentation a échoué (voir le journal).",
+              gpu_index=_gen_gpu_index())
     return _collect(out_dir, "sam", stamp)
 
 
@@ -252,7 +261,9 @@ def enhance_prompt(prompt: str,
     runner = settings.ROOT / "scripts" / "tools" / "run_enhance.py"
     cmd = [sys.executable, str(runner), "--model-dir", str(ENHANCE_MODEL_DIR),
            "--prompt", prompt, "--output", str(out_file)]
-    _run_tool(cmd, log, "L'amélioration du prompt a échoué (voir le journal).")
+    # Améliorateur = TEXTE → GPU secondaire dédié au texte (ex. 1080 Ti).
+    _run_tool(cmd, log, "L'amélioration du prompt a échoué (voir le journal).",
+              gpu_index=_text_gpu_index())
     try:
         text = out_file.read_text(encoding="utf-8").strip()
     except OSError:
@@ -298,5 +309,7 @@ def ultimate_upscale(image, scale: float = 2.0, prompt: str = "",
     prof = hardware.auto_profile(settings.load_prefs().get("gpu_index"))
     if prof.gpu and prof.gpu.vram_gb < 12:
         cmd.append("--low-vram")
-    _run_tool(cmd, log, "L'upscale créatif SDXL a échoué (voir le journal).")
+    # Upscale SDXL = génération d'IMAGES → GPU de génération (jamais le secondaire).
+    _run_tool(cmd, log, "L'upscale créatif SDXL a échoué (voir le journal).",
+              gpu_index=_gen_gpu_index())
     return _collect(out_dir, "usdu", stamp)
