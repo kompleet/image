@@ -397,6 +397,17 @@ _EN: dict[str, str] = {
         "without drifting)",
     "Fidélité ControlNet (↑ = plus fidèle)":
         "ControlNet fidelity (↑ = more faithful)",
+    "> ℹ️ ControlNet **pas encore téléchargé** : "
+    "relancez « Installer l'upscale créatif SDXL » "
+    "ci-dessus (ajoute ~2,5 Go) puis **redémarrez** "
+    "pour activer le verrouillage de structure.":
+        "> ℹ️ ControlNet **not downloaded yet**: re-run “Install the creative "
+        "SDXL upscale” above (adds ~2.5 GB) then **restart** to enable the "
+        "structure lock.",
+    "ControlNet pas installé : upscale sans ControlNet. Relancez "
+    "l'installateur pour l'activer.":
+        "ControlNet not installed: upscaling without it. Re-run the installer "
+        "to enable it.",
     "Prompt (optionnel — guide le détail)":
         "Prompt (optional — guides the detail)",
     "highly detailed, sharp focus, intricate textures":

@@ -274,11 +274,17 @@ def build_toolkit_tab(tab_id="toolkit"):
                             label="Créativité (débruitage — ↑ = détail inventé)")
                         _cn_ok = tools.upscale_cn_is_installed()
                         c_controlnet = gr.Checkbox(
-                            value=_cn_ok, visible=_cn_ok,
+                            value=_cn_ok,
                             label="🔒 ControlNet Tile (verrouille la structure — "
                                   "permet de monter la créativité sans dériver)")
+                        if not _cn_ok:
+                            gr.Markdown(
+                                "> ℹ️ ControlNet **pas encore téléchargé** : "
+                                "relancez « Installer l'upscale créatif SDXL » "
+                                "ci-dessus (ajoute ~2,5 Go) puis **redémarrez** "
+                                "pour activer le verrouillage de structure.")
                         c_cnscale = gr.Slider(
-                            0.2, 1.0, value=0.6, step=0.05, visible=_cn_ok,
+                            0.2, 1.0, value=0.6, step=0.05,
                             label="Fidélité ControlNet (↑ = plus fidèle)")
                         with gr.Row():
                             c_steps = gr.Slider(10, 40, value=24, step=1,
@@ -312,6 +318,11 @@ def build_toolkit_tab(tab_id="toolkit"):
                     if not tools.upscale_is_installed():
                         raise gr.Error(t("Installez d'abord l'upscale créatif SDXL "
                                          "(accordéon ci-dessus)."))
+                    if controlnet and not tools.upscale_cn_is_installed():
+                        gr.Warning(t("ControlNet pas installé : upscale sans "
+                                     "ControlNet. Relancez l'installateur pour "
+                                     "l'activer."))
+                        controlnet = False
                     settings.ensure_dirs()
                     preview_path = (settings.TMP_DIR /
                                     f"usdu_preview_{int(time.time()*1000)}.png")
