@@ -80,6 +80,12 @@ def upscale_is_installed() -> bool:
     return base.is_file() and vae.is_dir() and any(vae.glob("*.safetensors"))
 
 
+def upscale_cn_is_installed() -> bool:
+    """ControlNet Tile présent (optionnel — verrouille la structure)."""
+    cn = UPSCALE_DIR / "controlnet"
+    return cn.is_dir() and any(cn.glob("*.safetensors"))
+
+
 def _install_stream(tool: str):
     """Installe un outil (depth|bg) en streamant le journal (pour l'UI)."""
     setup = settings.ROOT / "scripts" / "setup_tools.py"
@@ -259,12 +265,14 @@ def enhance_prompt(prompt: str,
 def ultimate_upscale(image, scale: float = 2.0, prompt: str = "",
                      denoise: float = 0.35, steps: int = 24, cfg: float = 6.0,
                      tile: int = 1024, overlap: int = 128,
+                     use_controlnet: bool = False, cn_scale: float = 0.6,
                      preview_path: Path | None = None,
                      log: Callable[[str], None] | None = None) -> Path:
     """Upscale créatif tuilé « Ultimate SD Upscale » (SDXL img2img résident).
 
     Pré-agrandit puis raffine tuile par tuile à faible débruitage (fondu par
-    recouvrement). Modèle résident → tuiles rapides. 100% GPU (PyTorch)."""
+    recouvrement). Modèle résident → tuiles rapides. 100% GPU (PyTorch).
+    `use_controlnet` active ControlNet Tile (verrouille la structure)."""
     if not upscale_is_installed():
         raise ToolError("L'upscale créatif SDXL n'est pas installé "
                         "(bouton « Installer » de l'onglet Toolkit → Upscale).")
@@ -281,6 +289,9 @@ def ultimate_upscale(image, scale: float = 2.0, prompt: str = "",
            "--steps", str(int(steps)), "--cfg", str(float(cfg)),
            "--tile", str(int(tile)), "--overlap", str(int(overlap)),
            "--prompt", prompt or ""]
+    if use_controlnet and upscale_cn_is_installed():
+        cmd += ["--controlnet", str(UPSCALE_DIR / "controlnet"),
+                "--cn-scale", str(float(cn_scale))]
     if preview_path:
         cmd += ["--preview-path", str(preview_path)]
     # VRAM serrée (< 12 Go) → offload CPU du modèle pour éviter l'OOM.

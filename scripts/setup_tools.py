@@ -39,10 +39,12 @@ BG_REPO = "briaai/RMBG-1.4"
 SAM_REPO = "facebook/sam-vit-base"
 # Améliorateur de prompt : petit LLM instruct (~6 Go fp16), tourne en sous-process.
 ENHANCE_REPO = "Qwen/Qwen2.5-3B-Instruct"
-# Upscale créatif tuilé : SDXL base (1 fichier) + VAE fp16-fix (img2img, pas de ControlNet).
+# Upscale créatif tuilé : SDXL base (1 fichier) + VAE fp16-fix + ControlNet Tile
+# (optionnel, verrouille la structure pour pousser la créativité sans dériver).
 SDXL_REPO = "stabilityai/stable-diffusion-xl-base-1.0"
 SDXL_FILE = "sd_xl_base_1.0.safetensors"
 VAE_FIX_REPO = "madebyollin/sdxl-vae-fp16-fix"
+CN_TILE_REPO = "xinsir/controlnet-tile-sdxl-1.0"
 
 
 def install_depth():
@@ -109,8 +111,12 @@ def install_upscale():
     print(f"\nTéléchargement de la VAE fp16-fix ({VAE_FIX_REPO})…")
     snapshot_download(repo_id=VAE_FIX_REPO, local_dir=str(base / "vae"),
                       allow_patterns=["*.json", "*.safetensors"])
+    print(f"\nTéléchargement du ControlNet Tile ({CN_TILE_REPO}, ~2,5 Go)…")
+    snapshot_download(repo_id=CN_TILE_REPO, local_dir=str(base / "controlnet"),
+                      allow_patterns=["*.json", "*.safetensors"])
     pin_numpy()
-    print("\n[OK] Upscale créatif SDXL installé (onglet Toolkit → Upscale créatif).")
+    print("\n[OK] Upscale créatif SDXL + ControlNet Tile installé "
+          "(onglet Toolkit → Upscale créatif).")
 
 
 def main():

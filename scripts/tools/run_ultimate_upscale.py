@@ -52,6 +52,10 @@ def main():
     ap.add_argument("--preview-path", default="")
     ap.add_argument("--low-vram", action="store_true")
     ap.add_argument("--max-size", type=int, default=4096)
+    ap.add_argument("--controlnet", default="",
+                    help="dossier ControlNet Tile SDXL (verrouille la structure)")
+    ap.add_argument("--cn-scale", type=float, default=0.6,
+                    help="force du ControlNet (↑ = plus fidèle à la structure)")
     args = ap.parse_args()
 
     import numpy as np
@@ -68,10 +72,25 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
 
-    print(f"[usdu] chargement SDXL sur {device}…", flush=True)
+    # ControlNet Tile (optionnel) : conditionne chaque tuile sur la source -> on
+    # peut pousser la créativité sans dériver de la structure d'origine.
+    use_cn = bool(args.controlnet)
     vae = AutoencoderKL.from_pretrained(args.vae, torch_dtype=dtype)
-    pipe = StableDiffusionXLImg2ImgPipeline.from_single_file(
-        args.base_model, vae=vae, torch_dtype=dtype, add_watermarker=False)
+    if use_cn:
+        try:
+            from diffusers import (ControlNetModel,
+                                   StableDiffusionXLControlNetImg2ImgPipeline)
+        except ImportError:
+            sys.exit("diffusers trop ancien pour ControlNet. Réinstallez l'upscale.")
+        print(f"[usdu] chargement SDXL + ControlNet Tile sur {device}…", flush=True)
+        cn = ControlNetModel.from_pretrained(args.controlnet, torch_dtype=dtype)
+        pipe = StableDiffusionXLControlNetImg2ImgPipeline.from_single_file(
+            args.base_model, controlnet=cn, vae=vae, torch_dtype=dtype,
+            add_watermarker=False)
+    else:
+        print(f"[usdu] chargement SDXL sur {device}…", flush=True)
+        pipe = StableDiffusionXLImg2ImgPipeline.from_single_file(
+            args.base_model, vae=vae, torch_dtype=dtype, add_watermarker=False)
     pipe.set_progress_bar_config(disable=True)
     if device == "cuda" and args.low_vram:
         print("[usdu] VRAM serrée → offload CPU du modèle (plus lent mais tient).",
@@ -126,9 +145,15 @@ def main():
             inp = crop.resize((_round8(cw), _round8(ch)), Image.LANCZOS)
             n += 1
             print(f"[usdu]   tuile {n}/{total} ({x1},{y1})…", flush=True)
-            out = pipe(prompt=prompt, negative_prompt=negative, image=inp,
-                       strength=float(args.denoise), num_inference_steps=int(args.steps),
-                       guidance_scale=float(args.cfg), generator=gen).images[0]
+            kw = dict(prompt=prompt, negative_prompt=negative, image=inp,
+                      strength=float(args.denoise),
+                      num_inference_steps=int(args.steps),
+                      guidance_scale=float(args.cfg), generator=gen)
+            if use_cn:
+                # Tile : l'image de contrôle est la tuile (agrandie) elle-même.
+                kw["control_image"] = inp
+                kw["controlnet_conditioning_scale"] = float(args.cn_scale)
+            out = pipe(**kw).images[0]
             arr = np.asarray(out.convert("RGB").resize((cw, ch)), np.float32)
             mask = _feather(ch, cw, overlap)
             acc[y1:y2, x1:x2] += arr * mask

@@ -386,10 +386,17 @@ _EN: dict[str, str] = {
         "→ fast tiles, overlap feather blending). Invents fine detail, "
         "Magnific-style. **100% GPU** (PyTorch).",
     "Upscale créatif SDXL": "Creative SDXL upscale",
-    "PyTorch + diffusers (~7 Go : SDXL base + VAE fp16-fix). "
-    "Modèle résident sur le GPU. Aucune commande à taper.":
-        "PyTorch + diffusers (~7 GB: SDXL base + VAE fp16-fix). "
-        "Model resident on the GPU. No command to type.",
+    "PyTorch + diffusers (~9,5 Go : SDXL base + VAE fp16-fix + "
+    "ControlNet Tile). Modèle résident sur le GPU. Aucune "
+    "commande à taper.":
+        "PyTorch + diffusers (~9.5 GB: SDXL base + VAE fp16-fix + "
+        "ControlNet Tile). Model resident on the GPU. No command to type.",
+    "🔒 ControlNet Tile (verrouille la structure — "
+    "permet de monter la créativité sans dériver)":
+        "🔒 ControlNet Tile (locks structure — lets you raise creativity "
+        "without drifting)",
+    "Fidélité ControlNet (↑ = plus fidèle)":
+        "ControlNet fidelity (↑ = more faithful)",
     "Prompt (optionnel — guide le détail)":
         "Prompt (optional — guides the detail)",
     "highly detailed, sharp focus, intricate textures":

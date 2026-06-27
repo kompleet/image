@@ -236,7 +236,12 @@ a **real-time preview**. Invents fine detail. This is an A1111-free re-implement
 fp16-fix), installed in one click.
 
 Controls:
-- **Creativity (denoise)** — 0.15 faithful → 0.6 inventive.
+- **Creativity (denoise)** — 0.15 faithful → 0.75 inventive.
+- **🔒 ControlNet Tile** (optional) — conditions each tile on the source so you can
+  push creativity higher **without drifting** from the original structure (the
+  Magnific trick). Toggle + a *ControlNet fidelity* slider appear once it's
+  installed (`xinsir/controlnet-tile-sdxl-1.0`, ~2.5 GB, included in the
+  installer). Without it, it's plain low-denoise img2img — already very good.
 - **Scale** — ×1.5 to ×4.
 - **Steps / tile**, **CFG**, **tile size** (640–1280).
 - On < 12 GB VRAM, the model is automatically CPU-offloaded to avoid OOM.

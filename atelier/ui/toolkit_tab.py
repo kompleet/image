@@ -255,8 +255,9 @@ def build_toolkit_tab(tab_id="toolkit"):
                     "**100% GPU** (PyTorch).")
                 _installer_block(
                     "Upscale créatif SDXL",
-                    "PyTorch + diffusers (~7 Go : SDXL base + VAE fp16-fix). "
-                    "Modèle résident sur le GPU. Aucune commande à taper.",
+                    "PyTorch + diffusers (~9,5 Go : SDXL base + VAE fp16-fix + "
+                    "ControlNet Tile). Modèle résident sur le GPU. Aucune "
+                    "commande à taper.",
                     tools.install_upscale_stream, tools.upscale_is_installed())
 
                 with gr.Row():
@@ -269,8 +270,16 @@ def build_toolkit_tab(tab_id="toolkit"):
                         c_scale = gr.Slider(1.5, 4.0, value=2.0, step=0.5,
                                             label="Facteur d'agrandissement")
                         c_denoise = gr.Slider(
-                            0.15, 0.6, value=0.35, step=0.05,
+                            0.15, 0.75, value=0.35, step=0.05,
                             label="Créativité (débruitage — ↑ = détail inventé)")
+                        _cn_ok = tools.upscale_cn_is_installed()
+                        c_controlnet = gr.Checkbox(
+                            value=_cn_ok, visible=_cn_ok,
+                            label="🔒 ControlNet Tile (verrouille la structure — "
+                                  "permet de monter la créativité sans dériver)")
+                        c_cnscale = gr.Slider(
+                            0.2, 1.0, value=0.6, step=0.05, visible=_cn_ok,
+                            label="Fidélité ControlNet (↑ = plus fidèle)")
                         with gr.Row():
                             c_steps = gr.Slider(10, 40, value=24, step=1,
                                                 label="Pas / tuile")
@@ -292,7 +301,7 @@ def build_toolkit_tab(tab_id="toolkit"):
                                            autoscroll=True, elem_classes="log-box")
 
                 def do_creative(img, prompt, scale, denoise, steps, cfg, tile,
-                                progress=gr.Progress()):
+                                controlnet, cn_scale, progress=gr.Progress()):
                     import queue
                     import threading
                     import time
@@ -319,6 +328,8 @@ def build_toolkit_tab(tab_id="toolkit"):
                                 img, scale=float(scale), prompt=prompt or "",
                                 denoise=float(denoise), steps=int(steps),
                                 cfg=float(cfg), tile=int(tile),
+                                use_controlnet=bool(controlnet),
+                                cn_scale=float(cn_scale),
                                 preview_path=preview_path, log=q.put)
                             state["out"] = str(out)
                         except Exception as exc:  # noqa: BLE001
@@ -378,6 +389,6 @@ def build_toolkit_tab(tab_id="toolkit"):
                 c_evt = c_run.click(
                     do_creative,
                     inputs=[c_image, c_prompt, c_scale, c_denoise, c_steps,
-                            c_cfg, c_tile],
+                            c_cfg, c_tile, c_controlnet, c_cnscale],
                     outputs=[c_result, c_log])
                 c_stop.click(lambda: tools.cancel(), outputs=None, cancels=[c_evt])
