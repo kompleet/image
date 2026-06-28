@@ -111,7 +111,9 @@ The accordion adapts to the model family:
 ### LoRA
 Drop `.safetensors` / `.gguf` files into **`loras/`**, then pick up to **2** with
 their weights. The `<lora:name:weight>` syntax is forwarded to the engine. Use
-**↻ Refresh** after adding files, **✖ Clear** to reset.
+**↻ Refresh** after adding files, **✖ Clear** to reset. You can also **import a
+LoRA from Civitai** in one click — paste the model URL (or version ID) into the
+LoRA accordion; gated models need a Civitai token (Settings).
 
 ### Local / custom files
 To use a model downloaded elsewhere, drop the file(s) into **`models/custom/`**
@@ -328,7 +330,7 @@ resolved from your hardware; the downloader picks the closest matching file.
 **Flux.2 Klein 9B** (family `flux2`, edit model)
 - diffusion — [`leejet/FLUX.2-klein-9B-GGUF`](https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF) (distilled, 4 steps, CFG 1.0)
 - VAE — [`Comfy-Org/flux2-klein-9B`](https://huggingface.co/Comfy-Org/flux2-klein-9B) (`flux2-vae.safetensors`)
-- text encoder — [`unsloth/Qwen3-8B-GGUF`](https://huggingface.co/unsloth/Qwen3-8B-GGUF) (via `--llm`, offloaded to RAM)
+- text encoder — [`bartowski/mlabonne_Qwen3-8B-abliterated-GGUF`](https://huggingface.co/bartowski/mlabonne_Qwen3-8B-abliterated-GGUF) (Qwen3-8B **abliterated / uncensored**, via `--llm`, offloaded to RAM; for a standard encoder, drop a `Qwen3-8B` GGUF in `models/custom/` and pick it as *Encoder (local)*)
 
 **Krea 2 Turbo** (family `krea2`)
 - diffusion — [`realrebelai/KREA-2_GGUFs`](https://huggingface.co/realrebelai/KREA-2_GGUFs) (`TURBO/…`, 8 steps, CFG 1.0)

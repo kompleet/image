@@ -185,6 +185,13 @@ _EN: dict[str, str] = {
     "✖ Vider les LoRA": "✖ Clear LoRAs",
     "Déposez vos fichiers LoRA dans `{dir}`":
         "Drop your LoRA files into `{dir}`",
+    "Importer un LoRA Civitai (URL ou ID de version)":
+        "Import a Civitai LoRA (URL or version ID)",
+    "⬇️ Importer": "⬇️ Import",
+    "Collez une URL ou un ID de version Civitai.":
+        "Paste a Civitai URL or version ID.",
+    "✓ LoRA importé : **{name}** — sélectionnez-le ci-dessus.":
+        "✓ LoRA imported: **{name}** — select it above.",
 
     # ---- generate_tab : fichiers locaux ----
     "📂 Fichiers locaux (modèle perso)": "📂 Local files (custom model)",
@@ -482,6 +489,8 @@ _EN: dict[str, str] = {
     "VAE sur CPU": "VAE on CPU",
     "Endpoint Hugging Face (miroir éventuel)":
         "Hugging Face endpoint (optional mirror)",
+    "Jeton Civitai (optionnel — LoRA protégés)":
+        "Civitai token (optional — gated LoRAs)",
     "Langue de l'interface": "Interface language",
     "#### 🧮 Multi-GPU — carte secondaire dédiée au TEXTE\n"
     "Faites tourner le **texte** (amélioration de prompt + encodage) "

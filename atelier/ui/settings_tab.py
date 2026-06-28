@@ -111,12 +111,15 @@ def build_settings_tab():
 
         hf_ep = gr.Textbox(value=prefs.get("hf_endpoint", "https://huggingface.co"),
                            label="Endpoint Hugging Face (miroir éventuel)")
+        civitai_tok = gr.Textbox(value=prefs.get("civitai_token", ""),
+                                 label="Jeton Civitai (optionnel — LoRA protégés)",
+                                 type="password")
 
         save = gr.Button("💾 Enregistrer", variant="primary")
         saved = gr.Markdown("")
 
         def do_save(auto, gpu, tools_gpu, enc_gpu, quant, enc_quant, fa, offload,
-                    tiling, clip_cpu, vae_cpu, hf_ep):
+                    tiling, clip_cpu, vae_cpu, hf_ep, civitai_tok):
             p = settings.load_prefs()
             p["auto_optimize"] = bool(auto)
             p["gpu_index"] = gpu if gpu is not None else None
@@ -130,12 +133,13 @@ def build_settings_tab():
                 "vae_on_cpu": bool(vae_cpu),
             }
             p["hf_endpoint"] = hf_ep or "https://huggingface.co"
+            p["civitai_token"] = (civitai_tok or "").strip()
             settings.save_prefs(p)
             return gr.update(value=_profile_md()), t("✅ Réglages enregistrés.")
 
         save.click(do_save,
                    inputs=[auto, gpu, tools_gpu, enc_gpu, quant, enc_quant, fa,
-                           offload, tiling, clip_cpu, vae_cpu, hf_ep],
+                           offload, tiling, clip_cpu, vae_cpu, hf_ep, civitai_tok],
                    outputs=[profile_md, saved])
 
         # --- Optimisation curatée par génération de carte (1 clic) ---

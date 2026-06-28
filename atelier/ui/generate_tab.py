@@ -8,7 +8,7 @@ import re
 
 import gradio as gr
 
-from .. import i18n, registry, settings, styles
+from .. import downloader, i18n, registry, settings, styles
 from ..engine import generate as gen_engine
 from ..engine import tools
 from ..i18n import t
@@ -202,6 +202,13 @@ def build_generative_tab(model_id: str, title: str):
                         clear_lora = gr.Button("✖ Vider les LoRA", size="sm")
                     gr.Markdown(t("Déposez vos fichiers LoRA dans `{dir}`")
                                 .format(dir=settings.LORA_DIR))
+                    with gr.Row():
+                        civitai_ref = gr.Textbox(
+                            label="Importer un LoRA Civitai (URL ou ID de version)",
+                            scale=3, placeholder="https://civitai.com/…"
+                                                 "?modelVersionId=3067151")
+                        civitai_btn = gr.Button("⬇️ Importer", scale=1)
+                    civitai_msg = gr.Markdown("")
 
                 with gr.Accordion("📂 Fichiers locaux (modèle perso)", open=False):
                     gr.Markdown(t(
@@ -291,6 +298,21 @@ def build_generative_tab(model_id: str, title: str):
                     gr.update(value=None), gr.update(value=0.8))
 
         clear_lora.click(clear_loras, outputs=[lora1, lora1_w, lora2, lora2_w])
+
+        def _civitai_import(ref):
+            if not (ref or "").strip():
+                raise gr.Error(t("Collez une URL ou un ID de version Civitai."))
+            try:
+                name = downloader.download_lora_civitai(ref)
+            except Exception as exc:  # noqa: BLE001
+                raise gr.Error(str(exc))
+            choices = gen_engine.list_loras()
+            return (gr.update(choices=choices), gr.update(choices=choices),
+                    t("✓ LoRA importé : **{name}** — sélectionnez-le ci-dessus."
+                      ).format(name=name))
+
+        civitai_btn.click(_civitai_import, inputs=[civitai_ref],
+                          outputs=[lora1, lora2, civitai_msg])
 
         def _refresh_custom():
             c = gen_engine.list_custom_models()

@@ -44,6 +44,7 @@ DEFAULT_PREFS: dict[str, Any] = {
         "vae_on_cpu": False,
     },
     "hf_endpoint": "https://huggingface.co",
+    "civitai_token": "",        # jeton Civitai (optionnel, pour les LoRA protégés)
 }
 
 
