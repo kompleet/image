@@ -429,6 +429,16 @@ _EN: dict[str, str] = {
         "Prompt (optional — guides the detail, KEEP IT SHORT: ~77 tokens max "
         "for SDXL; no need to copy the generation prompt)",
     "Facteur d'agrandissement": "Upscale factor",
+    "Modèle SDXL (déposez vos .safetensors dans "
+    "tools_repo/upscale/checkpoints/)":
+        "SDXL model (drop your .safetensors into "
+        "tools_repo/upscale/checkpoints/)",
+    "VAE fp16-fix (externe, recommandé)":
+        "VAE fp16-fix (external, recommended)",
+    "VAE intégrée au modèle": "Model's built-in VAE",
+    "Pré-agrandissement (base avant SDXL)":
+        "Pre-upscale (base before SDXL)",
+    "Lanczos (par défaut)": "Lanczos (default)",
     "Créativité (débruitage — ↑ = détail inventé)":
         "Creativity (denoise — ↑ = invented detail)",
     "Pas / tuile": "Steps / tile",

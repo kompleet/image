@@ -114,6 +114,8 @@ def install_upscale():
     print(f"\nTéléchargement du ControlNet Tile ({CN_TILE_REPO}, ~2,5 Go)…")
     snapshot_download(repo_id=CN_TILE_REPO, local_dir=str(base / "controlnet"),
                       allow_patterns=["*.json", "*.safetensors"])
+    # Dossier où déposer des checkpoints SDXL perso (sélectionnables dans l'UI).
+    (base / "checkpoints").mkdir(parents=True, exist_ok=True)
     pin_numpy()
     print("\n[OK] Upscale créatif SDXL + ControlNet Tile installé "
           "(onglet Toolkit → Upscale créatif).")

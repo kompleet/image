@@ -254,6 +254,12 @@ a **real-time preview**. Invents fine detail. This is an A1111-free re-implement
 fp16-fix), installed in one click.
 
 Controls:
+- **SDXL model** — use the bundled SDXL Base 1.0, or drop your own SDXL
+  checkpoint (`.safetensors`) into `tools_repo/upscale/checkpoints/` and pick it.
+  **VAE** choice: external fp16-fix (recommended, avoids black images) or the
+  checkpoint's **built-in VAE**.
+- **Pre-upscale** — base enlargement before the SDXL tile refine: **Lanczos**
+  (default) or any installed **ESRGAN** model (sharper, real detail).
 - **Creativity (denoise)** — 0.15 faithful → 0.75 inventive.
 - **🔒 ControlNet Tile** (optional) — conditions each tile on the source so you can
   push creativity higher **without drifting** from the original structure (the

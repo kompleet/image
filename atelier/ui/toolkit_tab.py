@@ -267,6 +267,21 @@ def build_toolkit_tab(tab_id="toolkit"):
                 with gr.Row():
                     with gr.Column(scale=3):
                         c_image = gr.Image(label="Image à agrandir", type="pil")
+                        _ckpts = tools.list_upscale_checkpoints()
+                        c_model = gr.Dropdown(
+                            choices=_ckpts,
+                            value=(_ckpts[0][1] if _ckpts else None),
+                            label="Modèle SDXL (déposez vos .safetensors dans "
+                                  "tools_repo/upscale/checkpoints/)")
+                        c_vae = gr.Radio(
+                            [(t("VAE fp16-fix (externe, recommandé)"), False),
+                             (t("VAE intégrée au modèle"), True)],
+                            value=False, label="VAE")
+                        _ups = registry.list_upscalers()
+                        c_esrgan = gr.Dropdown(
+                            choices=[(t("Lanczos (par défaut)"), "")]
+                                    + [(u, u) for u in _ups],
+                            value="", label="Pré-agrandissement (base avant SDXL)")
                         c_prompt = gr.Textbox(
                             label="Prompt (optionnel — guide le détail, COURT : "
                                   "~77 tokens max SDXL ; inutile de recopier le "
@@ -313,7 +328,8 @@ def build_toolkit_tab(tab_id="toolkit"):
                                            autoscroll=True, elem_classes="log-box")
 
                 def do_creative(img, prompt, scale, denoise, steps, cfg, tile,
-                                controlnet, cn_scale, progress=gr.Progress()):
+                                controlnet, cn_scale, model, vae_integrated,
+                                esrgan, progress=gr.Progress()):
                     import queue
                     import threading
                     import time
@@ -347,6 +363,9 @@ def build_toolkit_tab(tab_id="toolkit"):
                                 cfg=float(cfg), tile=int(tile),
                                 use_controlnet=bool(controlnet),
                                 cn_scale=float(cn_scale),
+                                base_model=(model or None),
+                                integrated_vae=bool(vae_integrated),
+                                esrgan_model=(esrgan or None),
                                 preview_path=preview_path, log=q.put)
                             state["out"] = str(out)
                         except Exception as exc:  # noqa: BLE001
@@ -406,6 +425,7 @@ def build_toolkit_tab(tab_id="toolkit"):
                 c_evt = c_run.click(
                     do_creative,
                     inputs=[c_image, c_prompt, c_scale, c_denoise, c_steps,
-                            c_cfg, c_tile, c_controlnet, c_cnscale],
+                            c_cfg, c_tile, c_controlnet, c_cnscale,
+                            c_model, c_vae, c_esrgan],
                     outputs=[c_result, c_log])
                 c_stop.click(lambda: tools.cancel(), outputs=None, cancels=[c_evt])

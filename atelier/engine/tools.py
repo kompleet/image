@@ -23,6 +23,7 @@ BG_MODEL_DIR = TOOLS_DIR / "bg" / "model"
 SAM_MODEL_DIR = TOOLS_DIR / "sam" / "model"
 ENHANCE_MODEL_DIR = TOOLS_DIR / "enhance" / "model"
 UPSCALE_DIR = TOOLS_DIR / "upscale"
+UPSCALE_CKPT_DIR = UPSCALE_DIR / "checkpoints"   # checkpoints SDXL perso (.safetensors)
 
 _IMG_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -84,6 +85,19 @@ def upscale_cn_is_installed() -> bool:
     """ControlNet Tile présent (optionnel — verrouille la structure)."""
     cn = UPSCALE_DIR / "controlnet"
     return cn.is_dir() and any(cn.glob("*.safetensors"))
+
+
+def list_upscale_checkpoints() -> list[tuple[str, str]]:
+    """Checkpoints SDXL disponibles pour l'upscale créatif : (libellé, chemin).
+    Le modèle de base + tout .safetensors déposé dans tools_repo/upscale/checkpoints/."""
+    out: list[tuple[str, str]] = []
+    base = UPSCALE_DIR / "sd_xl_base_1.0.safetensors"
+    if base.is_file():
+        out.append(("SDXL Base 1.0 (par défaut)", str(base)))
+    if UPSCALE_CKPT_DIR.is_dir():
+        for p in sorted(UPSCALE_CKPT_DIR.glob("*.safetensors")):
+            out.append((p.stem, str(p)))
+    return out
 
 
 def _install_stream(tool: str):
@@ -281,29 +295,57 @@ def ultimate_upscale(image, scale: float = 2.0, prompt: str = "",
                      denoise: float = 0.35, steps: int = 24, cfg: float = 6.0,
                      tile: int = 1024, overlap: int = 128,
                      use_controlnet: bool = False, cn_scale: float = 0.6,
+                     base_model: str | None = None, integrated_vae: bool = False,
+                     esrgan_model: str | None = None,
                      preview_path: Path | None = None,
                      log: Callable[[str], None] | None = None) -> Path:
     """Upscale créatif tuilé « Ultimate SD Upscale » (SDXL img2img résident).
 
-    Pré-agrandit puis raffine tuile par tuile à faible débruitage (fondu par
-    recouvrement). Modèle résident → tuiles rapides. 100% GPU (PyTorch).
-    `use_controlnet` active ControlNet Tile (verrouille la structure)."""
+    Pré-agrandit puis raffine tuile par tuile à faible débruitage. Options :
+    `base_model` (checkpoint SDXL ; défaut = base 1.0), `integrated_vae` (utiliser
+    la VAE du checkpoint au lieu de la fp16-fix externe), `esrgan_model` (pré-
+    agrandir avec un ESRGAN GGUF plutôt qu'en Lanczos), `use_controlnet`."""
     if not upscale_is_installed():
         raise ToolError("L'upscale créatif SDXL n'est pas installé "
                         "(bouton « Installer » de l'onglet Toolkit → Upscale).")
+    base = Path(base_model) if base_model else UPSCALE_DIR / "sd_xl_base_1.0.safetensors"
+    if not base.is_file():
+        raise ToolError(f"Checkpoint SDXL introuvable : {base}")
+    from PIL import Image as _PILImage
     src = _to_src(image, "usdu")
+    with _PILImage.open(src) as _im:
+        ow, oh = _im.size
+    tw = max(8, int(round(ow * scale / 8)) * 8)
+    th = max(8, int(round(oh * scale / 8)) * 8)
+
+    # Pré-agrandissement ESRGAN optionnel (sd.cpp) : base plus nette que Lanczos.
+    inp = src
+    if esrgan_model:
+        from . import generate as gen_engine
+        try:
+            if log:
+                log(f"Pré-agrandissement ESRGAN « {esrgan_model} »…")
+            inp = gen_engine.upscale_image(src, esrgan_model, repeats=1, log=log)
+        except Exception as exc:  # noqa: BLE001
+            if log:
+                log(f"[usdu] ESRGAN échoué ({exc}) → repli Lanczos.")
+            inp = src
+
     stamp = time.strftime("%Y%m%d-%H%M%S")
     out_dir = settings.TMP_DIR / f"usdu_out_{stamp}"
     out_dir.mkdir(parents=True, exist_ok=True)
     runner = settings.ROOT / "scripts" / "tools" / "run_ultimate_upscale.py"
     cmd = [sys.executable, str(runner),
-           "--base-model", str(UPSCALE_DIR / "sd_xl_base_1.0.safetensors"),
-           "--vae", str(UPSCALE_DIR / "vae"),
-           "--input", str(src), "--output-dir", str(out_dir),
+           "--base-model", str(base),
+           "--input", str(inp), "--output-dir", str(out_dir),
+           "--width", str(tw), "--height", str(th),
            "--scale", str(float(scale)), "--denoise", str(float(denoise)),
            "--steps", str(int(steps)), "--cfg", str(float(cfg)),
            "--tile", str(int(tile)), "--overlap", str(int(overlap)),
            "--prompt", prompt or ""]
+    # VAE : externe fp16-fix (défaut) sauf si on veut celle intégrée au checkpoint.
+    if not integrated_vae and (UPSCALE_DIR / "vae").is_dir():
+        cmd += ["--vae", str(UPSCALE_DIR / "vae")]
     if use_controlnet and upscale_cn_is_installed():
         cmd += ["--controlnet", str(UPSCALE_DIR / "controlnet"),
                 "--cn-scale", str(float(cn_scale))]

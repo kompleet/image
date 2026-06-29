@@ -38,10 +38,14 @@ def _feather(h: int, w: int, fade: int):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--base-model", required=True)
-    ap.add_argument("--vae", required=True)
+    ap.add_argument("--vae", default="",
+                    help="VAE externe (dossier). Vide = VAE intégrée au modèle.")
     ap.add_argument("--input", required=True)
     ap.add_argument("--output-dir", required=True)
     ap.add_argument("--scale", type=float, default=2.0)
+    ap.add_argument("--width", type=int, default=0,
+                    help="cible explicite (sinon scale × taille source)")
+    ap.add_argument("--height", type=int, default=0)
     ap.add_argument("--denoise", type=float, default=0.35,
                     help="force du raffinage (0.2 fidèle, 0.5 inventif)")
     ap.add_argument("--steps", type=int, default=24)
@@ -84,10 +88,16 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     dtype = torch.float16 if device == "cuda" else torch.float32
 
+    # VAE : externe (fp16-fix) si fournie, sinon celle intégrée au checkpoint.
+    load_kw = dict(torch_dtype=dtype, add_watermarker=False)
+    if args.vae:
+        load_kw["vae"] = AutoencoderKL.from_pretrained(args.vae, torch_dtype=dtype)
+        print("[usdu] VAE externe (fp16-fix).", flush=True)
+    else:
+        print("[usdu] VAE intégrée au modèle.", flush=True)
     # ControlNet Tile (optionnel) : conditionne chaque tuile sur la source -> on
     # peut pousser la créativité sans dériver de la structure d'origine.
     use_cn = bool(args.controlnet)
-    vae = AutoencoderKL.from_pretrained(args.vae, torch_dtype=dtype)
     if use_cn:
         try:
             from diffusers import (ControlNetModel,
@@ -95,14 +105,14 @@ def main():
         except ImportError:
             sys.exit("diffusers trop ancien pour ControlNet. Réinstallez l'upscale.")
         print(f"[usdu] chargement SDXL + ControlNet Tile sur {device}…", flush=True)
-        cn = ControlNetModel.from_pretrained(args.controlnet, torch_dtype=dtype)
+        load_kw["controlnet"] = ControlNetModel.from_pretrained(
+            args.controlnet, torch_dtype=dtype)
         pipe = StableDiffusionXLControlNetImg2ImgPipeline.from_single_file(
-            args.base_model, controlnet=cn, vae=vae, torch_dtype=dtype,
-            add_watermarker=False)
+            args.base_model, **load_kw)
     else:
         print(f"[usdu] chargement SDXL sur {device}…", flush=True)
         pipe = StableDiffusionXLImg2ImgPipeline.from_single_file(
-            args.base_model, vae=vae, torch_dtype=dtype, add_watermarker=False)
+            args.base_model, **load_kw)
     pipe.set_progress_bar_config(disable=True)
     if device == "cuda" and args.low_vram:
         print("[usdu] VRAM serrée → offload CPU du modèle (plus lent mais tient).",
@@ -121,8 +131,11 @@ def main():
         pass
 
     src = Image.open(args.input).convert("RGB")
-    tw = _round8(int(src.width * args.scale))
-    th = _round8(int(src.height * args.scale))
+    if args.width and args.height:        # cible explicite (ex. après ESRGAN)
+        tw, th = _round8(args.width), _round8(args.height)
+    else:
+        tw = _round8(int(src.width * args.scale))
+        th = _round8(int(src.height * args.scale))
     if max(tw, th) > args.max_size:
         r = args.max_size / max(tw, th)
         tw, th = _round8(int(tw * r)), _round8(int(th * r))
