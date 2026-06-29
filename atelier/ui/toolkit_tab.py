@@ -324,8 +324,11 @@ def build_toolkit_tab(tab_id="toolkit"):
                                   "prompt de génération)", lines=2,
                             placeholder="highly detailed skin texture, sharp "
                                         "focus, photorealistic")
-                        c_scale = gr.Slider(1.5, 4.0, value=2.0, step=0.5,
-                                            label="Facteur d'agrandissement")
+                        c_scale = gr.Slider(
+                            1.5, 8.0, value=2.0, step=0.5,
+                            label="Facteur d'agrandissement",
+                            info="Jusqu'à ~8K (plafonné à 8192 px). ×6–×8 = "
+                                 "beaucoup de tuiles : très long + ~1–2 Go de RAM.")
                         c_denoise = gr.Slider(
                             0.15, 0.75, value=0.35, step=0.05,
                             label="Créativité (débruitage — ↑ = détail inventé)")

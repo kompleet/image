@@ -55,7 +55,7 @@ def main():
     ap.add_argument("--prompt", default="")
     ap.add_argument("--preview-path", default="")
     ap.add_argument("--low-vram", action="store_true")
-    ap.add_argument("--max-size", type=int, default=4096)
+    ap.add_argument("--max-size", type=int, default=8192)
     ap.add_argument("--controlnet", default="",
                     help="dossier ControlNet Tile SDXL (verrouille la structure)")
     ap.add_argument("--cn-scale", type=float, default=0.6,

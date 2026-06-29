@@ -430,6 +430,10 @@ _EN: dict[str, str] = {
         "Prompt (optional — guides the detail, KEEP IT SHORT: ~77 tokens max "
         "for SDXL; no need to copy the generation prompt)",
     "Facteur d'agrandissement": "Upscale factor",
+    "Jusqu'à ~8K (plafonné à 8192 px). ×6–×8 = "
+    "beaucoup de tuiles : très long + ~1–2 Go de RAM.":
+        "Up to ~8K (capped at 8192 px). ×6–×8 = many tiles: very slow "
+        "+ ~1–2 GB RAM.",
     "Modèle SDXL (déposez vos .safetensors dans "
     "tools_repo/upscale/checkpoints/)":
         "SDXL model (drop your .safetensors into "

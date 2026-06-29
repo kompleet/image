@@ -269,7 +269,9 @@ Controls:
   Magnific trick). Toggle + a *ControlNet fidelity* slider appear once it's
   installed (`xinsir/controlnet-tile-sdxl-1.0`, ~2.5 GB, included in the
   installer). Without it, it's plain low-denoise img2img — already very good.
-- **Scale** — ×1.5 to ×4.
+- **Scale** — ×1.5 to ×8 (up to ~8K, capped at 8192 px). High factors mean many
+  tiles → slow, and ~1–2 GB system RAM for the final assembly; VRAM stays constant
+  (tiled).
 - **Steps / tile**, **CFG**, **tile size** (640–1280).
 - On < 12 GB VRAM, the model is automatically CPU-offloaded to avoid OOM.
 
