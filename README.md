@@ -260,6 +260,9 @@ Controls:
   checkpoint's **built-in VAE**.
 - **Pre-upscale** — base enlargement before the SDXL tile refine: **Lanczos**
   (default) or any installed **ESRGAN** model (sharper, real detail).
+- **Prompt presets** — a dropdown of ready-made prompts (Sharp & faithful / Add
+  detail / Realistic skin / Nature / Architecture / Illustration / Maximum detail
+  / Soft & clean) that fills the prompt **and** sets a matching creativity level.
 - **Creativity (denoise)** — 0.15 faithful → 0.75 inventive.
 - **🔒 ControlNet Tile** (optional) — conditions each tile on the source so you can
   push creativity higher **without drifting** from the original structure (the

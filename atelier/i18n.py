@@ -439,6 +439,16 @@ _EN: dict[str, str] = {
     "Pré-agrandissement (base avant SDXL)":
         "Pre-upscale (base before SDXL)",
     "Lanczos (par défaut)": "Lanczos (default)",
+    "Préréglage de prompt (remplit le prompt + ajuste la créativité)":
+        "Prompt preset (fills the prompt + sets creativity)",
+    "🔍 Net & fidèle (aucun ajout)": "🔍 Sharp & faithful (no additions)",
+    "✨ Ajouter du détail": "✨ Add detail",
+    "🧴 Peau réaliste (portrait)": "🧴 Realistic skin (portrait)",
+    "🌿 Nature / paysage": "🌿 Nature / landscape",
+    "🏙️ Architecture / produit": "🏙️ Architecture / product",
+    "🎨 Illustration / peinture": "🎨 Illustration / painting",
+    "🚀 Détail maximum (créatif)": "🚀 Maximum detail (creative)",
+    "🪶 Doux & propre (anti-grain)": "🪶 Soft & clean (anti-grain)",
     "Créativité (débruitage — ↑ = détail inventé)":
         "Creativity (denoise — ↑ = invented detail)",
     "Pas / tuile": "Steps / tile",

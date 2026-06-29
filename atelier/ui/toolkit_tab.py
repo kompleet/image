@@ -8,6 +8,36 @@ from ..engine import generate as gen_engine
 from ..engine import tools
 from ..i18n import t
 
+# Préréglages de prompt pour l'upscale créatif : (nom, prompt court SDXL, créativité).
+# La créativité (débruitage) est calée sur l'intention : faible = fidèle, fort = inventif.
+UPSCALE_PRESETS = [
+    ("🔍 Net & fidèle (aucun ajout)",
+     "sharp focus, clean precise detail, faithful to the original, "
+     "no added elements, high fidelity", 0.20),
+    ("✨ Ajouter du détail",
+     "highly detailed, intricate fine textures, crisp micro-detail, "
+     "enhanced clarity, sharp focus", 0.40),
+    ("🧴 Peau réaliste (portrait)",
+     "highly detailed realistic skin with fine pores, natural complexion, "
+     "sharp eyes and individual hair strands, true-to-life photographic detail",
+     0.35),
+    ("🌿 Nature / paysage",
+     "crisp natural textures, detailed foliage and rock, fine vegetation, "
+     "clear sharp landscape detail", 0.40),
+    ("🏙️ Architecture / produit",
+     "clean sharp edges, precise material textures, accurate reflections, "
+     "crisp surface detail", 0.30),
+    ("🎨 Illustration / peinture",
+     "crisp clean linework and brushwork, refined shapes, vivid consistent "
+     "colors, sharp stylized detail", 0.40),
+    ("🚀 Détail maximum (créatif)",
+     "ultra detailed, hyper-detailed intricate surfaces, rich fine texture "
+     "everywhere, razor sharp", 0.55),
+    ("🪶 Doux & propre (anti-grain)",
+     "clean smooth surfaces, gently denoised, soft natural detail, "
+     "no artifacts, no grain", 0.25),
+]
+
 
 def _installer_block(title: str, note: str, stream_fn, installed: bool):
     """Accordéon d'installation 1 clic commun aux outils."""
@@ -282,6 +312,11 @@ def build_toolkit_tab(tab_id="toolkit"):
                             choices=[(t("Lanczos (par défaut)"), "")]
                                     + [(u, u) for u in _ups],
                             value="", label="Pré-agrandissement (base avant SDXL)")
+                        c_preset = gr.Dropdown(
+                            choices=[(t(n), n) for (n, _p, _d) in UPSCALE_PRESETS],
+                            value=None,
+                            label="Préréglage de prompt (remplit le prompt + "
+                                  "ajuste la créativité)")
                         c_prompt = gr.Textbox(
                             label="Prompt (optionnel — guide le détail, COURT : "
                                   "~77 tokens max SDXL ; inutile de recopier le "
@@ -326,6 +361,15 @@ def build_toolkit_tab(tab_id="toolkit"):
                             show_download_button=True)
                         c_log = gr.Textbox(label="Journal", lines=12,
                                            autoscroll=True, elem_classes="log-box")
+
+                def _apply_preset(name):
+                    for n, p, d in UPSCALE_PRESETS:
+                        if n == name:
+                            return gr.update(value=p), gr.update(value=d)
+                    return gr.update(), gr.update()
+
+                c_preset.change(_apply_preset, inputs=[c_preset],
+                                outputs=[c_prompt, c_denoise])
 
                 def do_creative(img, prompt, scale, denoise, steps, cfg, tile,
                                 controlnet, cn_scale, model, vae_integrated,
