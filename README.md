@@ -414,17 +414,66 @@ scripts/
 
 ## Acknowledgments
 
-- **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** by
-  **Leejet** and contributors — the inference engine this whole project rests on.
-  Huge thanks.
-- **[Gradio](https://github.com/gradio-app/gradio)** for the web UI.
-- Model authors on **Hugging Face**: Flux.2 Klein (Black Forest Labs / Comfy-Org),
-  Krea 2, Qwen3 / Qwen3-VL (Alibaba), WAN 2.1 VAE, LTX-2.3 (Lightricks),
-  Depth Anything V2, RMBG-1.4 (BRIA, **non-commercial**), Segment Anything (Meta),
-  SDXL (Stability AI), and the ESRGAN upscalers collected by `wbruna`. Please
-  respect each model’s individual license.
-- **Built with [Claude](https://claude.ai/code)** (Anthropic) — vibe-coded
-  iteratively in natural language.
+This project is just glue around other people's hard work. Heartfelt thanks to
+everyone below — all credit for the models and tools goes to their original
+authors. Please read and respect each model's own license on its page.
 
-This is an independent hobby project and is not affiliated with or endorsed by
-any of the above.
+### Engine & framework
+- **[stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp)** —
+  **leejet** & contributors. The inference engine this whole project rests on.
+- **[Gradio](https://github.com/gradio-app/gradio)** — the web UI.
+- **[PyTorch](https://pytorch.org)**, **[Hugging Face](https://huggingface.co)**
+  `transformers` / `diffusers` / `huggingface_hub` — the optional Toolkit tools.
+
+### Image models
+- **Flux.2 Klein** — base model by **Black Forest Labs**; GGUF by
+  [leejet](https://huggingface.co/leejet/FLUX.2-klein-9B-GGUF); VAE by
+  [Comfy-Org](https://huggingface.co/Comfy-Org/flux2-klein-9B); text encoder
+  **Qwen3-8B** by **Alibaba / Qwen team**, abliterated by
+  [mlabonne](https://huggingface.co/mlabonne), GGUF by
+  [bartowski](https://huggingface.co/bartowski/mlabonne_Qwen3-8B-abliterated-GGUF).
+- **Krea 2** — base model by **Krea AI**; GGUF by
+  [realrebelai](https://huggingface.co/realrebelai/KREA-2_GGUFs); text encoder
+  **Qwen3-VL-4B** by **Alibaba / Qwen team**, abliterated by
+  [Huihui-ai](https://huggingface.co/huihui-ai), GGUF by
+  [noctrex](https://huggingface.co/noctrex/Huihui-Qwen3-VL-4B-Instruct-abliterated-GGUF);
+  **WAN 2.1** VAE by **Alibaba / Wan team**, repackaged by
+  [Comfy-Org](https://huggingface.co/Comfy-Org/Wan_2.1_ComfyUI_repackaged).
+
+### Video
+- **LTX-2.3** by **Lightricks**, GGUF by
+  [unsloth](https://huggingface.co/unsloth/LTX-2.3-GGUF); text encoder **Gemma 3**
+  by **Google DeepMind**, GGUF by
+  [unsloth](https://huggingface.co/unsloth/gemma-3-12b-it-GGUF).
+
+### Upscalers
+- **ESRGAN models (GGUF)** collected by
+  [wbruna](https://huggingface.co/wbruna/upscalers-sdcpp-gguf) — including
+  **Real-ESRGAN** (Xintao Wang et al., Tencent ARC) and community models
+  (UltraSharp, foolhardy Remacri, Nomos, LSDIR, NickelbackFS, StarSample…). Credit
+  to each upstream author; see the repo for individual sources/licenses.
+- **Creative upscale (Ultimate SD Upscale style):** **SDXL** by
+  [Stability AI](https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0);
+  fp16-fix VAE by [Ollin Boer Bohan / madebyollin](https://huggingface.co/madebyollin/sdxl-vae-fp16-fix);
+  **ControlNet Tile** by [xinsir](https://huggingface.co/xinsir/controlnet-tile-sdxl-1.0).
+  The tiled-redraw method is inspired by **Ultimate SD Upscale**
+  ([Coyote-A](https://github.com/Coyote-A/ultimate-upscale-for-automatic1111)).
+
+### Toolkit
+- **Depth Anything V2** —
+  [depth-anything](https://huggingface.co/depth-anything/Depth-Anything-V2-Small-hf) team.
+- **RMBG-1.4** background removal — **BRIA AI**
+  ([briaai/RMBG-1.4](https://huggingface.co/briaai/RMBG-1.4), **non-commercial** license).
+- **Segment Anything** — **Meta AI**
+  ([facebook/sam-vit-base](https://huggingface.co/facebook/sam-vit-base)).
+- **Prompt enhancer** — **Qwen2.5-3B-Instruct** by **Alibaba / Qwen team**
+  ([Qwen/Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct)).
+- The **Krea prompting guide** informed the Krea 2 enhancer system prompt.
+
+### Built with
+- **[Claude](https://claude.ai/code)** (Anthropic) — vibe-coded iteratively in
+  natural language.
+
+This is an independent, non-commercial hobby project, **not affiliated with or
+endorsed by** any of the above. If you are an author and want a credit corrected
+or removed, please open an issue.
