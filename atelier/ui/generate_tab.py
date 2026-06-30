@@ -256,10 +256,13 @@ def build_generative_tab(model_id: str, title: str,
                 with gr.Row():
                     steps = gr.Slider(1, 60, value=d.get("steps", 8), step=1,
                                       label="Étapes")
-                    cfg = gr.Slider(0.7, 12.0, value=d.get("cfg_scale", 1.0),
+                    cfg = gr.Slider(0.0, 12.0, value=d.get("cfg_scale", 1.0),
                                     step=0.1, label="CFG",
-                                    info="1.0 = pas de guidage (normal pour Flux "
-                                         "distillé). <1 ou >1 = expérimental.")
+                                    info="Sur sd.cpp, CFG désactivé = 1.0 (normal "
+                                         "pour les modèles distillés). 0.0 = pur "
+                                         "inconditionnel : peut IGNORER le prompt "
+                                         "(la « cfg 0 » de Krea = sa convention "
+                                         "maison, ≠ sd.cpp). >1 = guidage.")
                 preset_list = _presets(model_id)
                 preset = gr.Dropdown(
                     [t(p["name"]) for p in preset_list],

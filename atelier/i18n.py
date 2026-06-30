@@ -223,8 +223,12 @@ _EN: dict[str, str] = {
     "Hauteur": "Height",
     "Étapes": "Steps",
     "CFG": "CFG",
-    "1.0 = pas de guidage (normal pour Flux distillé). <1 ou >1 = expérimental.":
-        "1.0 = no guidance (normal for distilled Flux). <1 or >1 = experimental.",
+    "Sur sd.cpp, CFG désactivé = 1.0 (normal pour les modèles distillés). 0.0 = "
+    "pur inconditionnel : peut IGNORER le prompt (la « cfg 0 » de Krea = sa "
+    "convention maison, ≠ sd.cpp). >1 = guidage.":
+        "On sd.cpp, CFG disabled = 1.0 (normal for distilled models). 0.0 = pure "
+        "unconditional: may IGNORE the prompt (Krea's “cfg 0” is its own "
+        "convention, ≠ sd.cpp). >1 = guidance.",
     "Préréglage (sampler/scheduler/pas)": "Preset (sampler/scheduler/steps)",
     "Sampler": "Sampler",
     "Scheduler (sigmas)": "Scheduler (sigmas)",
