@@ -89,6 +89,18 @@ SYSTEM_GENERIC = (
 
 STYLES = {"generic": SYSTEM_GENERIC, "krea2": SYSTEM_KREA2}
 
+# Intensité de l'amélioration (ajoutée au system prompt) + budget de tokens.
+LEVELS = {
+    "light": ("LEVEL: LIGHT — only a light touch-up: keep the user's wording and "
+              "length almost intact, just add a few precise quality and detail "
+              "descriptors. Do NOT over-expand.", 140),
+    "medium": ("LEVEL: MEDIUM — a balanced enhancement: enrich with the key "
+               "pillars while staying faithful and reasonably concise.", 320),
+    "strong": ("LEVEL: STRONG — a full, rich expansion: develop every relevant "
+               "pillar in vivid detail for a long, dense, professional prompt.",
+               520),
+}
+
 
 def _clean(text: str) -> str:
     """Retire un éventuel formatage parasite (guillemets, puces, libellés)."""
@@ -108,7 +120,8 @@ def main():
     ap.add_argument("--prompt", required=True)
     ap.add_argument("--output", required=True)
     ap.add_argument("--style", default="generic", choices=list(STYLES))
-    ap.add_argument("--max-new-tokens", type=int, default=400)
+    ap.add_argument("--level", default="medium", choices=list(LEVELS))
+    ap.add_argument("--max-new-tokens", type=int, default=0)
     args = ap.parse_args()
 
     import torch
@@ -124,16 +137,19 @@ def main():
     model = AutoModelForCausalLM.from_pretrained(
         args.model_dir, torch_dtype=dtype).to(device).eval()
 
+    level_text, level_tokens = LEVELS.get(args.level, LEVELS["medium"])
+    max_new = int(args.max_new_tokens) or level_tokens
+    system = STYLES.get(args.style, SYSTEM_GENERIC) + "\n\n" + level_text
     messages = [
-        {"role": "system", "content": STYLES.get(args.style, SYSTEM_GENERIC)},
+        {"role": "system", "content": system},
         {"role": "user", "content": args.prompt.strip()},
     ]
     text = tok.apply_chat_template(messages, tokenize=False,
                                    add_generation_prompt=True)
     inputs = tok(text, return_tensors="pt").to(device)
-    print("[enhance] génération…", flush=True)
+    print(f"[enhance] génération (niveau {args.level})…", flush=True)
     with torch.no_grad():
-        out = model.generate(**inputs, max_new_tokens=int(args.max_new_tokens),
+        out = model.generate(**inputs, max_new_tokens=max_new,
                              do_sample=True, temperature=0.7, top_p=0.9,
                              pad_token_id=tok.eos_token_id)
     gen = out[0][inputs["input_ids"].shape[1]:]

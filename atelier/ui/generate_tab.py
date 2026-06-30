@@ -128,6 +128,10 @@ def build_generative_tab(model_id: str, title: str,
                 with gr.Row():
                     enhance_btn = gr.Button("✨ Améliorer le prompt (IA)",
                                             size="sm", scale=3)
+                    enh_level = gr.Dropdown(
+                        [(t("Léger"), "light"), (t("Moyen"), "medium"),
+                         (t("Fort"), "strong")],
+                        value="medium", label="Intensité", scale=2)
                 negative = gr.Textbox(label="Prompt négatif", lines=1,
                                       visible=d.get("supports_negative", False))
 
@@ -184,6 +188,15 @@ def build_generative_tab(model_id: str, title: str,
                     strength = gr.Slider(0.1, 1.0, value=0.6, step=0.05,
                                          label="Force de transformation",
                                          visible=not is_edit)
+                    if is_edit:
+                        outpaint = gr.Slider(
+                            1.0, 2.0, value=1.0, step=0.1,
+                            label="🧩 Outpaint — étendre la toile (1.0 = off ; "
+                                  "⚠️ expérimental)",
+                            info="Agrandit la toile et laisse le modèle remplir "
+                                 "les bords. Décrivez l'extension dans le prompt.")
+                    else:
+                        outpaint = gr.State(1.0)
 
                 with gr.Accordion("🧩 LoRA", open=False):
                     with gr.Row():
@@ -385,16 +398,17 @@ def build_generative_tab(model_id: str, title: str,
         # System prompt adapté au modèle : Krea 2 -> guide Krea ; sinon générique.
         _enh_style = "krea2" if family == "krea2" else "generic"
 
-        def _enhance(text):
+        def _enhance(text, level):
             try:
-                better = tools.enhance_prompt(text or "", style=_enh_style)
+                better = tools.enhance_prompt(text or "", style=_enh_style,
+                                              level=level or "medium")
             except tools.ToolError as exc:
                 raise gr.Error(str(exc))
             except Exception as exc:  # noqa: BLE001
                 raise gr.Error(f"Échec de l'amélioration : {exc}")
             return gr.update(value=better)
 
-        enhance_btn.click(_enhance, inputs=[prompt], outputs=[prompt])
+        enhance_btn.click(_enhance, inputs=[prompt, enh_level], outputs=[prompt])
 
         def _fit_to_ref(img):
             """img2img : cale la sortie sur le format de l'image de départ
@@ -427,7 +441,7 @@ def build_generative_tab(model_id: str, title: str,
                           outputs=[sampler, schedule, steps, cfg])
 
         def do_generate(system_prompt, prompt, negative, init_image, ref_image2,
-                        ref_image3, strength,
+                        ref_image3, strength, outpaint,
                         width, height, steps, cfg, sampler, schedule, flow_shift,
                         seed, batch, lora1, lora1_w, lora2, lora2_w,
                         custom_diff, custom_vae, custom_enc,
@@ -456,7 +470,26 @@ def build_generative_tab(model_id: str, title: str,
             # img2img classique via -i (init_image) + force.
             init_path = None
             ref_paths: list = []
-            if is_edit:
+            of = float(outpaint) if outpaint else 1.0
+            if is_edit and init_image is not None and of > 1.01:
+                # Outpaint : on agrandit la toile et on demande au modèle de
+                # remplir les bords. Fond = image étirée+floutée (continuation
+                # plausible), image d'origine recollée au centre.
+                from PIL import Image as _PI, ImageFilter as _IF
+                ow, oh = init_image.size
+                nw = max(256, min(2048, int(round(ow * of / 16)) * 16))
+                nh = max(256, min(2048, int(round(oh * of / 16)) * 16))
+                bg = init_image.convert("RGB").resize((nw, nh), _PI.LANCZOS)
+                bg = bg.filter(_IF.GaussianBlur(28))
+                bg.paste(init_image.convert("RGB"), ((nw - ow) // 2, (nh - oh) // 2))
+                rp = settings.TMP_DIR / "outpaint_ref.png"
+                bg.save(rp)
+                ref_paths.append(rp)
+                width, height = nw, nh
+                full_prompt = (full_prompt + ", extend and naturally fill the "
+                               "outer borders to complete the scene seamlessly, "
+                               "matching perspective, lighting and content").strip(", ")
+            elif is_edit:
                 # Édition multi-référence : jusqu'à 3 images (-r répété).
                 for i, im in enumerate((init_image, ref_image2, ref_image3)):
                     if im is not None:
@@ -558,7 +591,7 @@ def build_generative_tab(model_id: str, title: str,
         gen_evt = run.click(
             do_generate,
             inputs=[system_prompt, prompt, negative, init_image, ref_image2,
-                    ref_image3, strength, width,
+                    ref_image3, strength, outpaint, width,
                     height, steps, cfg, sampler, schedule, flow_shift, seed, batch,
                     lora1, lora1_w, lora2, lora2_w,
                     custom_diff, custom_vae, custom_enc],

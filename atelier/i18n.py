@@ -126,6 +126,10 @@ _EN: dict[str, str] = {
     "Prompt": "Prompt",
     "Décrivez l'image…": "Describe the image…",
     "✨ Améliorer le prompt (IA)": "✨ Enhance prompt (AI)",
+    "Intensité": "Strength",
+    "Léger": "Light",
+    "Moyen": "Medium",
+    "Fort": "Strong",
     "Prompt négatif": "Negative prompt",
 
     # ---- generate_tab : améliorateur ----
@@ -175,6 +179,12 @@ _EN: dict[str, str] = {
     "Référence 2 (option)": "Reference 2 (optional)",
     "Référence 3 (option)": "Reference 3 (optional)",
     "Force de transformation": "Transformation strength",
+    "🧩 Outpaint — étendre la toile (1.0 = off ; ⚠️ expérimental)":
+        "🧩 Outpaint — extend the canvas (1.0 = off; ⚠️ experimental)",
+    "Agrandit la toile et laisse le modèle remplir les bords. Décrivez "
+    "l'extension dans le prompt.":
+        "Enlarges the canvas and lets the model fill the borders. Describe the "
+        "extension in the prompt.",
 
     # ---- generate_tab : LoRA ----
     "🧩 LoRA": "🧩 LoRA",

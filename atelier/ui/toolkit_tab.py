@@ -435,7 +435,9 @@ def build_toolkit_tab(tab_id="toolkit", pending_toolkit=None, tabs=None):
                     logs: list[str] = []
                     last_mtime = None
                     last_emit = 0.0
-                    progress(0.05, desc="Upscale créatif…")
+                    import re as _re
+                    tile_re = _re.compile(r"tuile (\d+)/(\d+)")
+                    progress(0.03, desc="Préparation…")
                     while True:
                         try:
                             line = q.get(timeout=0.3)
@@ -445,6 +447,11 @@ def build_toolkit_tab(tab_id="toolkit", pending_toolkit=None, tabs=None):
                             break
                         if line:
                             logs.append(line)
+                            mt = tile_re.search(line)
+                            if mt:
+                                cur, tot = int(mt.group(1)), max(1, int(mt.group(2)))
+                                progress(0.05 + 0.9 * cur / tot,
+                                         desc=f"Tuile {cur}/{tot}")
                         prev = gr.update()
                         new_prev = False
                         if preview_path.exists():

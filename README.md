@@ -116,6 +116,8 @@ The accordion adapts to the model family:
   combination in the prompt (e.g. *“put the character from image 1 into the scene
   of image 2”*). Each image is passed to the engine as a separate `-r` flag. No
   strength slider — editing is prompt-driven. Output aspect follows your image.
+  An **🧩 Outpaint** slider (experimental) extends the canvas and lets the model
+  fill the new borders — describe the extension in the prompt.
 - **Other models (img2img)** — load a starting image and set the
   **transformation strength** (low = close to the original, high = reinvented).
 
@@ -161,8 +163,12 @@ its aspect.
 - **Images** — batch count (1–8).
 
 ### Output
-- **Live preview** — updates in real time during generation.
-- **Gallery** — results, captioned with their seed.
+- **Merged preview & results** — the live preview shows in the gallery during
+  generation, then the final images replace it (one view).
+- **Seed** — the selected image's seed shows in a copy-button box; **Reuse this
+  seed** drops it back into the seed field. Clearing the seed field resets it to -1.
+- **Send to Toolkit** — push the selected image straight into a Toolkit tool
+  (depth, background removal, SAM, ESRGAN or creative upscale).
 - **Saved prompts** — every image gets an A1111-style `.txt` sidecar in
   `outputs/` with the prompt, negative, model, sampler/scheduler, seed and size.
 
@@ -295,7 +301,10 @@ The **✨ Enhance prompt** button (in each generation tab) runs a small instruct
 LLM (*Qwen2.5-3B-Instruct*, PyTorch ~6 GB, one-click install) that rewrites your
 idea into a detailed **English** prompt (subject, lighting, composition, style).
 The model is loaded then unloaded per call → **no VRAM conflict** with generation.
-It outputs only the enhanced prompt, injected straight into the prompt field.
+It outputs only the enhanced prompt, injected straight into the prompt field. The
+system prompt **detects intent from keywords** (medium/style/subject/mood) and
+keeps the output medium-coherent; a **strength** selector (Light / Medium / Strong)
+controls how far it expands. Krea 2 uses a Krea-specific system prompt.
 
 ---
 

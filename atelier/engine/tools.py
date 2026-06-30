@@ -260,7 +260,7 @@ def sam_segment(image, x: int, y: int,
     return _collect(out_dir, "sam", stamp), (overlay if overlay.exists() else None)
 
 
-def enhance_prompt(prompt: str, style: str = "generic",
+def enhance_prompt(prompt: str, style: str = "generic", level: str = "medium",
                    log: Callable[[str], None] | None = None) -> str:
     """Améliore un prompt brut via un petit LLM instruct (transformers).
 
@@ -278,7 +278,8 @@ def enhance_prompt(prompt: str, style: str = "generic",
     runner = settings.ROOT / "scripts" / "tools" / "run_enhance.py"
     cmd = [sys.executable, str(runner), "--model-dir", str(ENHANCE_MODEL_DIR),
            "--prompt", prompt, "--output", str(out_file),
-           "--style", style if style in ("generic", "krea2") else "generic"]
+           "--style", style if style in ("generic", "krea2") else "generic",
+           "--level", level if level in ("light", "medium", "strong") else "medium"]
     # Améliorateur = TEXTE → GPU secondaire dédié au texte (ex. 1080 Ti).
     _run_tool(cmd, log, "L'amélioration du prompt a échoué (voir le journal).",
               gpu_index=_text_gpu_index())

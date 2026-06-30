@@ -78,6 +78,7 @@ def build_app() -> gr.Blocks:
     # Langue de l'interface : lue dans les préférences. Les chaînes dynamiques
     # sont traduites à la construction (via t()), le reste après coup.
     i18n.init_from_prefs()
+    first_run = not settings.PREFS_FILE.exists()
     gpus = hardware.detect_gpus()
     sd_cli = settings.find_sd_cli()
 
@@ -88,6 +89,24 @@ def build_app() -> gr.Blocks:
             f"<div id='atelier-header'><h1>🎨 {APP_NAME}</h1>"
             f"<div class='sub'>{_subtitle} · "
             f"Flux.2 Klein 9B · Krea 2 Turbo · v{__version__}</div></div>")
+
+        # Premier démarrage : choix de la langue (bilingue, persisté).
+        if first_run:
+            gr.Markdown("### 🌐 Choisissez la langue · Choose your language")
+            with gr.Row():
+                _fr_btn = gr.Button("🇫🇷 Français", variant="primary")
+                _en_btn = gr.Button("🇬🇧 English", variant="primary")
+            _lang_msg = gr.Markdown("")
+
+            def _pick_lang(code):
+                p = settings.load_prefs()
+                p["lang"] = code
+                settings.save_prefs(p)
+                return ("✅ Enregistré — **redémarrez** l'application (run.bat). · "
+                        "Saved — **restart** the app.")
+
+            _fr_btn.click(lambda: _pick_lang("fr"), outputs=[_lang_msg])
+            _en_btn.click(lambda: _pick_lang("en"), outputs=[_lang_msg])
 
         if sd_cli is None:
             gr.Markdown("> ⚠️ **Binaire `sd-cli` introuvable.** Lancez "
