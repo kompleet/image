@@ -5,6 +5,7 @@ import os
 import subprocess
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Mapping
@@ -209,11 +210,16 @@ def run(cmd: list[str], log: Callable[[str], None] | None = None,
                             encoding="utf-8", errors="replace")
     with _LOCK:
         _ACTIVE.add(proc)
+    # On garde la fin de la sortie pour diagnostiquer les crashs de sd-cli
+    # (l'assert GGML n'apparaît que quelques lignes avant la mort du process).
+    tail: deque[str] = deque(maxlen=100)
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
+            s = line.rstrip("\n")
+            tail.append(s)
             if log:
-                log(line.rstrip("\n"))
+                log(s)
         code = proc.wait()
     finally:
         with _LOCK:
@@ -221,7 +227,36 @@ def run(cmd: list[str], log: Callable[[str], None] | None = None,
     if _CANCELLED:
         raise EngineError("Interrompu par l'utilisateur.")
     if code != 0:
-        raise EngineError(f"sd-cli s'est terminé avec le code {code}.")
+        raise EngineError(_diagnose_failure(code, cmd, tail))
+
+
+def _diagnose_failure(code: int, cmd: list[str], tail: "deque[str]") -> str:
+    """Transforme un code de sortie brut de sd-cli en message actionnable.
+
+    Le cas le plus fréquent est l'assert GGML de reshape (`ggml_nelements(a) ==
+    ne0*ne1*ne2`) : dimensions de tenseur incompatibles. Avec un LoRA, c'est
+    quasi toujours un LoRA entraîné pour une autre base (ex. Krea 2 « full » vs
+    Turbo) ; sinon c'est une résolution qui ne respecte pas la grille du modèle.
+    """
+    reshape_assert = any("GGML_ASSERT(ggml_nelements(a) ==" in ln for ln in tail)
+    if reshape_assert:
+        has_lora = "--lora-model-dir" in cmd or any("<lora:" in c for c in cmd)
+        if has_lora:
+            return (
+                "❌ Crash pendant l'application d'un LoRA (formes de tenseurs "
+                "incompatibles).\n"
+                "Ce LoRA n'est pas compatible avec le modèle sélectionné — "
+                "souvent un LoRA entraîné pour une autre base (ex. Krea 2 "
+                "« full » alors que vous utilisez Krea 2 Turbo).\n"
+                "→ Réessayez sans ce LoRA, ou utilisez le modèle pour lequel "
+                "il a été entraîné.")
+        return (
+            "❌ sd-cli a planté sur un reshape de tenseur (dimensions "
+            "incompatibles).\n"
+            "Vérifiez que la résolution respecte la grille du modèle "
+            "(multiple de 64 px pour Krea, 32 px pour Flux.2).\n"
+            f"(code de sortie {code})")
+    return f"sd-cli s'est terminé avec le code {code}."
 
 
 def _q(s: str) -> str:
